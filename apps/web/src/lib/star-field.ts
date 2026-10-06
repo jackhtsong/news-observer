@@ -8,6 +8,7 @@ export type StarFieldOptions = {
   minSizePx: number; // CSS pixels at the cutoff…
   maxSizePx: number; // …and for the brightest stars
   saturation: number; // 0 = white stars, 1 = full B−V tint
+  color?: string; // one "#rrggbb" for every star (for a light page); overrides the B−V tint
 };
 
 // Stars are directions, not points: only the camera's rotation applies, and depth is pinned to
@@ -42,12 +43,14 @@ const FRAGMENT = `
 export function createStarField(options: StarFieldOptions, pixelRatio: number) {
   const { stars } = catalog as { stars: number[] };
   const positions: number[] = [], colors: number[] = [], weights: number[] = [];
+  // The shader writes these sRGB values as-is, like bvColor's.
+  const fixed = options.color ? [1, 3, 5].map(index => parseInt(options.color!.slice(index, index + 2), 16) / 255) : null;
   for (let i = 0; i < stars.length; i += 4) {
     const [ra, dec, vmag, bv] = stars.slice(i, i + 4);
     if (vmag > options.magnitudeCutoff) break; // brightest first
     // At GMST 0 a star sits above longitude = RA; the object's y rotation applies −GMST.
     positions.push(...skyDirection(dec, ra));
-    colors.push(...bvColor(bv, options.saturation));
+    colors.push(...(fixed ?? bvColor(bv, options.saturation)));
     weights.push(magnitudeWeight(vmag, options.magnitudeCutoff));
   }
   const geometry = new BufferGeometry();

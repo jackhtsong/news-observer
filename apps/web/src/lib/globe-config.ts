@@ -6,8 +6,9 @@ export const GLOBE = {
   selectedCountrySideColor: "#9b501f", // darker orange extrusion walls
   countryAnimationMs: 600, // land and border tween; fixed-size markers follow the surface
   selectedCountryAltitude: 0.025, // raised country surface, fraction of globe radius
-  landColor: "#9ebe8f", // fallback for countries missing from data/country-colors.json
+  landColor: "#9ebe8f", // fallback for countries missing from data/country-colors.json (made pastel too)
   landLightnessBoost: 0.12, // added to each satellite country color's HSL lightness (≈2 shades)
+  landPastelMix: 0.4, // then blended this far toward white: 0 = satellite color, 1 = white
   borderDarkness: 0.5, // borders = average of the two neighbors' land colors, this much darker
   landAltitude: 0.001, // fraction of globe radius, below heatmaps and markers
   borderAltitude: 0.0018, // outlines above land, below heatmaps; prevents line/surface flicker
@@ -18,8 +19,8 @@ export const GLOBE = {
   reliefLightDirection: [-0.5, 0.7, 0.5] as const, // camera space, toward the light: upper left, like the orb's bright top
   reliefSlopeSmoothing: 2, // slope sampling distance in facets; higher smooths rugged ranges (Andes, Himalaya)
   reliefShadeLimit: 0.3, // soft cap on relief lightening/darkening (±30%) so steep mountains stay gentle
-  orbTopColor: "#86bad9", // light blue at the screen-space north/top of the orb (15% darker than #9edbff)
-  orbColor: "#072d58", // deep blue at the bottom (15% darker than #083568); fluid motion blends between these
+  orbTopColor: "#eef8fe", // near-white blue at the screen-space north/top of the orb
+  orbColor: "#b6d8ee", // pale blue at the bottom; fluid motion blends between these (enough contrast to see it move)
   orbRenderSize: 512, // fixed CSS/backbuffer basis, scaled to the projected globe
   orbMaxFps: 30,
   orbMaxPixelRatio: 1.25,
@@ -43,7 +44,7 @@ export const GLOBE = {
   relatedArcHoverMs: 140, // glow fade in/out
   relatedArcHoverReleaseMs: 250, // a hovered pin's arcs linger this long so the pointer can reach them
   rotationSpeed: 0.5, // Three.js OrbitControls speed; 1 ≈ one revolution/minute at 60 fps, so 0.5 ≈ one per two minutes
-  atmosphereColor: "#333333", // one shade lighter than the #242424 page background
+  atmosphereColor: "#e4e3df", // a soft grey shadow, a few shades darker than the #FAF9F6 page background
   atmosphereAltitude: 0.12, // outer halo thickness, fraction of globe radius
   atmosphereHaloStrength: 1, // 1 = exactly atmosphereColor at the limb, fading to the background
   atmosphereHaloFalloff: 2.2, // higher = halo fades faster into space
@@ -53,7 +54,8 @@ export const GLOBE = {
   sunlightIntensity: 1.1,
   maxPixelRatio: 1.5, // limit GPU cost on high-density displays
   // Backdrop: the real night sky (Yale Bright Star Catalogue), aligned to the current sidereal time.
-  skyBrightness: 0.85, // peak star opacity; subtle against the #242424 page
+  skyBrightness: 0.9, // peak star opacity; dimmer stars fade toward the #FAF9F6 page
+  skyStarColor: "#555555", // dark grey dots on the light page instead of B−V star colors
   skyMagnitudeCutoff: 5.5, // dimmest visual magnitude drawn (≈2,900 stars; the catalog reaches ≈6.5)
   skyStarMinSizePx: 1.6, // CSS pixels for the dimmest stars…
   skyStarMaxSizePx: 4.2, // …and the brightest (Sirius)

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type CSSProperties } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
-import { AdditiveBlending, AlwaysStencilFunc, AmbientLight, BackSide, BufferAttribute, BufferGeometry, CatmullRomCurve3, Color, CylinderGeometry, DirectionalLight, EqualStencilFunc, FrontSide, Group, Mesh, MeshBasicMaterial, MeshLambertMaterial, PerspectiveCamera, Raycaster, ReplaceStencilOp, ShaderMaterial, SphereGeometry, TubeGeometry, Vector2, Vector3, type Material, type Object3D } from "three";
+import { AdditiveBlending, AlwaysStencilFunc, AmbientLight, BackSide, BufferAttribute, BufferGeometry, CatmullRomCurve3, Color, CylinderGeometry, DirectionalLight, EqualStencilFunc, FrontSide, Group, Mesh, MeshBasicMaterial, MeshLambertMaterial, NormalBlending, PerspectiveCamera, Raycaster, ReplaceStencilOp, ShaderMaterial, SphereGeometry, TubeGeometry, Vector2, Vector3, type Material, type Object3D } from "three";
 import { CATEGORIES, LABELS, isCurated, type CategoryHeatmap, type CategoryId, type LayerId, type ViewTab } from "@/lib/layers";
 import { densityField, heatmapSegments, sphereGrid, type SphereGrid } from "@/lib/heatmap-density";
 import type { Event, EventLink } from "@/lib/api";
@@ -122,11 +122,12 @@ function animatePings(now: number, reduced: boolean) {
 }
 // Stable per-event stagger so headline pins never pulse in unison.
 const pingOffset = (id: string) => [...id].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 7) % GLOBE.pinPingPeriodMs;
-// ATMOSPHERE — two additive shells. Both work in view space: `facing` is 1 where the
+// ATMOSPHERE — two blended shells. Both work in view space: `facing` is 1 where the
 // surface points at the camera and 0 at the silhouette. Shaders output the plain color
-// with glow as alpha: additive blending already scales color by alpha, and the page
-// then shows mix(background, color, glow) instead of a darkened ring. colorspace_fragment
-// converts three's linear working color back to sRGB so #333333 renders as #333333.
+// with glow as alpha, so the page shows mix(background, color, glow): on the light page a
+// color darker than the background reads as a soft shadow around the Earth.
+// colorspace_fragment converts three's linear working color back to sRGB, so the configured
+// hex renders exactly.
 const ATMOSPHERE_VERTEX = `
   varying vec3 vNormal;
   varying vec3 vView;
@@ -176,7 +177,7 @@ function atmosphereShell(radius: number, rim: boolean) {
       limbFacing: { value: Math.sqrt(1 - 1 / outer ** 2) },
     },
     side: rim ? FrontSide : BackSide,
-    blending: AdditiveBlending,
+    blending: NormalBlending,
     transparent: true,
     depthWrite: false,
   });
@@ -197,10 +198,14 @@ function lighten(hex: string, amount: number) {
   return `#${[red, green, blue].map(channel => Math.round((channel + m) * 255).toString(16).padStart(2, "0")).join("")}`;
 }
 // Each country's base color is its average in a satellite image (scripts/build-country-colors.py),
-// brightened for legibility on the dark page.
+// brightened, then blended toward white (GLOBE.landPastelMix) for soft pastel land.
+function pastel(hex: string) {
+  const channels = [1, 3, 5].map(index => parseInt(hex.slice(index, index + 2), 16));
+  return `#${channels.map(channel => Math.round(channel + (255 - channel) * GLOBE.landPastelMix).toString(16).padStart(2, "0")).join("")}`;
+}
 const landRelief = { strength: GLOBE.reliefStrength, heightScale: GLOBE.reliefHeightScale, sampleDegrees: GLOBE.reliefFacetDegrees, lightDirection: GLOBE.reliefLightDirection, slopeSmoothing: GLOBE.reliefSlopeSmoothing, shadeLimit: GLOBE.reliefShadeLimit };
-const satelliteColors = new Map(Object.entries(countryColors as Record<string, string>).map(([id, hex]) => [id, lighten(hex, GLOBE.landLightnessBoost)]));
-const satelliteColor = (id: string) => satelliteColors.get(id) ?? GLOBE.landColor;
+const satelliteColors = new Map(Object.entries(countryColors as Record<string, string>).map(([id, hex]) => [id, pastel(lighten(hex, GLOBE.landLightnessBoost))]));
+const satelliteColor = (id: string) => satelliteColors.get(id) ?? pastel(GLOBE.landColor);
 const hexChannels = (hex: string) => [1, 3, 5].map(index => parseInt(hex.slice(index, index + 2), 16));
 // Shared borders average both countries' land colors; coastlines use the one country.
 // Either way the result is darkened by GLOBE.borderDarkness.
@@ -560,7 +565,7 @@ export default function EventGlobe({ view, headlines, allEvents, links, events, 
     const instance = globe.current;
     const stars = createStarField({
       brightness: GLOBE.skyBrightness, magnitudeCutoff: GLOBE.skyMagnitudeCutoff, minSizePx: GLOBE.skyStarMinSizePx,
-      maxSizePx: GLOBE.skyStarMaxSizePx, saturation: GLOBE.skyColorSaturation,
+      maxSizePx: GLOBE.skyStarMaxSizePx, saturation: GLOBE.skyColorSaturation, color: GLOBE.skyStarColor,
     }, instance.renderer().getPixelRatio());
     alignStarField(stars, new Date());
     instance.scene().add(stars);

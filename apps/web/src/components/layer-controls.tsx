@@ -64,7 +64,6 @@ export default function LayerRail({ filters, onChange, panels, reflowKey, openRe
           <button type="button" className="rail-icon" data-state={state} data-open={flyout?.id === category.id || undefined}
             aria-pressed={state === "on" ? true : state === "partial" ? "mixed" : false} aria-controls="category-flyout"
             aria-label={`${category.label}, ${on} of ${category.layers.length} layers on`}
-            style={{ "--category-color": eventColor(category.layers[0]) } as React.CSSProperties}
             onClick={e => { onChange(setCategoryEnabled(filters, category.id, state !== "on")); open(category.id, e.currentTarget.closest("li")!); }}>
             <RailIcon id={category.id} />
             {state === "partial" && <span className="rail-badge">{on}</span>}
