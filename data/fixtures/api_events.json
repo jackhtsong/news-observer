@@ -1,98 +1,1009 @@
 [
   {
-    "id": "usgs:us7000example",
-    "source": "usgs",
-    "sourceUrl": "https://earthquake.usgs.gov/earthquakes/eventpage/us7000example",
+    "id": "conflict-csv:https://www.richmondandtwickenhamtimes.co.uk/news/national/26603404.former-nine-oclock-service-priest-guilty-rape-indecent-assaults/",
+    "source": "conflict_csv",
+    "sourceUrl": "https://www.richmondandtwickenhamtimes.co.uk/news/national/26603404.former-nine-oclock-service-priest-guilty-rape-indecent-assaults/",
     "imageUrl": null,
-    "layerId": "earthquake",
-    "subtype": null,
-    "title": "M 6.2 - 15 km SW of Napa, California",
-    "summary": "USGS native point. Public-domain catalog fixture for the weekend map.",
-    "occurredAt": "2026-10-03T12:04:11Z",
-    "updatedAt": "2026-10-03T12:10:00Z",
+    "layerId": "crime",
+    "subtype": "1821",
+    "title": "Former Nine O'Clock Service Evangelical Priest Christopher Brain Found Guilty of Rape and Sexual Assaults",
+    "summary": "Christopher Brain, head of the Sheffield-based Nine O'Clock Service evangelical movement, was convicted of rape and multiple indecent assaults against female congregation members.",
+    "occurredAt": "2026-10-02T00:00:00Z",
+    "updatedAt": "2026-10-02T00:00:00Z",
     "endedAt": null,
-    "lng": -122.4,
-    "lat": 37.8,
-    "altM": -10000,
-    "geoPrecision": "point",
+    "lng": -0.416667,
+    "lat": 53.75,
+    "altM": null,
+    "geoPrecision": "region",
     "geoSource": "native",
-    "weight": 6.2,
-    "significance": 80,
-    "countryIso3": "USA",
+    "weight": 160,
+    "significance": 95.5,
+    "countryIso3": null,
+    "keywords": [],
+    "entities": [
+      {
+        "type": "actor",
+        "text": "PRIEST",
+        "confidence": 1
+      }
+    ],
+    "rawRef": null,
+    "tags": [
+      "crime",
+      "1821"
+    ],
+    "attributes": {}
+  },
+  {
+    "id": "conflict-csv:https://www.keighleynews.co.uk/news/national/26604167.widdecombe-murder-suspect-charged-preparing-terrorism-nigel-farage/",
+    "source": "conflict_csv",
+    "sourceUrl": "https://www.keighleynews.co.uk/news/national/26604167.widdecombe-murder-suspect-charged-preparing-terrorism-nigel-farage/",
+    "imageUrl": null,
+    "layerId": "terror",
+    "subtype": "190",
+    "title": "Suspect in Ann Widdecombe Murder Charged with Preparing Terrorist Acts Against Nigel Farage",
+    "summary": "The man accused of murdering British politician Ann Widdecombe faced new terrorism charges for plotting attacks that included targeting Reform UK leader Nigel Farage.",
+    "occurredAt": "2026-10-02T00:00:00Z",
+    "updatedAt": "2026-10-02T00:00:00Z",
+    "endedAt": null,
+    "lng": -1.25,
+    "lat": 53.45,
+    "altM": null,
+    "geoPrecision": "region",
+    "geoSource": "native",
+    "weight": 124,
+    "significance": 100.0,
+    "countryIso3": null,
+    "keywords": [],
+    "entities": [
+      {
+        "type": "actor",
+        "text": "UNITED KINGDOM",
+        "confidence": 1
+      }
+    ],
+    "rawRef": null,
+    "tags": [
+      "terror",
+      "190"
+    ],
+    "attributes": {}
+  },
+  {
+    "id": "conflict-csv:https://www.harrowtimes.co.uk/news/national/26600537.christa-pike-in-critical-condition-tennessees-failed-execution-attempt/",
+    "source": "conflict_csv",
+    "sourceUrl": "https://www.harrowtimes.co.uk/news/national/26600537.christa-pike-in-critical-condition-tennessees-failed-execution-attempt/",
+    "imageUrl": null,
+    "layerId": "crime",
+    "subtype": "186",
+    "title": "Christa Pike Left in Critical Condition Following Botched Lethal Injection in Tennessee",
+    "summary": "Tennessee death row inmate Christa Pike was hospitalized in critical condition on life support after state executioners spent hours failing to establish intravenous lines.",
+    "occurredAt": "2026-10-02T00:00:00Z",
+    "updatedAt": "2026-10-02T00:00:00Z",
+    "endedAt": null,
+    "lng": -86.7489,
+    "lat": 35.7449,
+    "altM": null,
+    "geoPrecision": "city",
+    "geoSource": "native",
+    "weight": 121,
+    "significance": 100.0,
+    "countryIso3": null,
+    "keywords": [],
+    "entities": [
+      {
+        "type": "actor",
+        "text": "THE US",
+        "confidence": 1
+      }
+    ],
+    "rawRef": null,
+    "tags": [
+      "crime",
+      "186"
+    ],
+    "attributes": {}
+  },
+  {
+    "id": "conflict-csv:https://news.yam.md/ro/story/69051688",
+    "source": "conflict_csv",
+    "sourceUrl": "https://news.yam.md/ro/story/69051688",
+    "imageUrl": null,
+    "layerId": "conflict",
+    "subtype": "190",
+    "title": "Moldovan Defense Ministry Investigates Military Drone Crash and Detonation in Branesti",
+    "summary": "Moldovan authorities deployed security forces and explosive experts to Branesti after a stray combat drone crashed into trees and exploded near the Ukrainian border.",
+    "occurredAt": "2026-09-30T00:00:00Z",
+    "updatedAt": "2026-09-30T00:00:00Z",
+    "endedAt": null,
+    "lng": 29.0,
+    "lat": 47.0,
+    "altM": null,
+    "geoPrecision": "region",
+    "geoSource": "native",
+    "weight": 120,
+    "significance": 100.0,
+    "countryIso3": null,
+    "keywords": [],
+    "entities": [
+      {
+        "type": "actor",
+        "text": "MINISTRY",
+        "confidence": 1
+      }
+    ],
+    "rawRef": null,
+    "tags": [
+      "conflict",
+      "190"
+    ],
+    "attributes": {
+      "event_type": "conflict",
+      "actor1": "MINISTRY",
+      "location": "Moldova"
+    }
+  },
+  {
+    "id": "conflict-csv:https://www.harrowtimes.co.uk/news/national/26600533.renee-goods-family-sues-us-government-officials-killing-minneapolis/",
+    "source": "conflict_csv",
+    "sourceUrl": "https://www.harrowtimes.co.uk/news/national/26600533.renee-goods-family-sues-us-government-officials-killing-minneapolis/",
+    "imageUrl": null,
+    "layerId": "politics",
+    "subtype": "190",
+    "title": "Family of Renee Good Files Wrongful Death Lawsuit Against US Federal Officials Over Minneapolis Raid",
+    "summary": "Relatives of Renee Good filed a major civil lawsuit against federal immigration officials and agents following her fatal shooting during an enforcement raid in Minneapolis.",
+    "occurredAt": "2026-10-02T00:00:00Z",
+    "updatedAt": "2026-10-02T00:00:00Z",
+    "endedAt": null,
+    "lng": 48.0,
+    "lat": 6.0,
+    "altM": null,
+    "geoPrecision": "region",
+    "geoSource": "native",
+    "weight": 110,
+    "significance": 100.0,
+    "countryIso3": null,
+    "keywords": [],
+    "entities": [
+      {
+        "type": "actor",
+        "text": "MINNEAPOLIS",
+        "confidence": 1
+      },
+      {
+        "type": "actor",
+        "text": "US GOVERNMENT",
+        "confidence": 1
+      }
+    ],
+    "rawRef": null,
+    "tags": [
+      "politics",
+      "190"
+    ],
+    "attributes": {}
+  },
+  {
+    "id": "conflict-csv:https://www.b92.net/info/politika/271678/vucic-odgovorio-na-napade-blokadera-da-me-oterate-iz-naroda-ne-mozete/vest",
+    "source": "conflict_csv",
+    "sourceUrl": "https://www.b92.net/info/politika/271678/vucic-odgovorio-na-napade-blokadera-da-me-oterate-iz-naroda-ne-mozete/vest",
+    "imageUrl": null,
+    "layerId": "protest",
+    "subtype": "190",
+    "title": "Serbian President Vucic Rebuffs Opposition Protests and Road Blockades",
+    "summary": "President Aleksandar Vucic addressed nationwide anti-government demonstrations and transit blockades, declaring that political opponents cannot sever his connection to the citizenry.",
+    "occurredAt": "2026-09-29T00:00:00Z",
+    "updatedAt": "2026-09-29T00:00:00Z",
+    "endedAt": null,
+    "lng": 26.0,
+    "lat": 64.0,
+    "altM": null,
+    "geoPrecision": "region",
+    "geoSource": "native",
+    "weight": 104,
+    "significance": 100.0,
+    "countryIso3": null,
+    "keywords": [],
+    "entities": [
+      {
+        "type": "actor",
+        "text": "RUSSIAN",
+        "confidence": 1
+      },
+      {
+        "type": "actor",
+        "text": "UKRAINE",
+        "confidence": 1
+      }
+    ],
+    "rawRef": null,
+    "tags": [
+      "protest",
+      "190"
+    ],
+    "attributes": {
+      "event_type": "protest",
+      "actor1": "RUSSIAN",
+      "actor2": "UKRAINE",
+      "location": "Finland"
+    }
+  },
+  {
+    "id": "conflict-csv:https://www.peeblesshirenews.com/news/national/26600510.putin-says-russia-will-use-all-weapons-arsenal-territory-attacked/",
+    "source": "conflict_csv",
+    "sourceUrl": "https://www.peeblesshirenews.com/news/national/26600510.putin-says-russia-will-use-all-weapons-arsenal-territory-attacked/",
+    "imageUrl": null,
+    "layerId": "conflict",
+    "subtype": "150",
+    "title": "Vladimir Putin Issues Threat to Deploy Full Weapons Arsenal If Russian Territory Faces Attack",
+    "summary": "Russian President Vladimir Putin issued a stern warning to NATO and Western allies, asserting Moscow will utilize its full strategic and conventional arsenal if sovereignty is violated.",
+    "occurredAt": "2026-10-02T00:00:00Z",
+    "updatedAt": "2026-10-02T00:00:00Z",
+    "endedAt": null,
+    "lng": 18.0,
+    "lat": 56.0,
+    "altM": null,
+    "geoPrecision": "region",
+    "geoSource": "native",
+    "weight": 96,
+    "significance": 87.4,
+    "countryIso3": null,
+    "keywords": [],
+    "entities": [
+      {
+        "type": "actor",
+        "text": "NATO",
+        "confidence": 1
+      },
+      {
+        "type": "actor",
+        "text": "MILITARY",
+        "confidence": 1
+      }
+    ],
+    "rawRef": null,
+    "tags": [
+      "conflict",
+      "150"
+    ],
+    "attributes": {
+      "event_type": "conflict",
+      "actor1": "NATO",
+      "actor2": "MILITARY",
+      "location": "Baltic Sea, Oceans (general), Oceans"
+    }
+  },
+  {
+    "id": "conflict-csv:https://www.leighjournal.co.uk/news/national/26592963.raf-fairford-suspect-called-police-hour-farmer-raised-alarm/",
+    "source": "conflict_csv",
+    "sourceUrl": "https://www.leighjournal.co.uk/news/national/26592963.raf-fairford-suspect-called-police-hour-farmer-raised-alarm/",
+    "imageUrl": null,
+    "layerId": "terror",
+    "subtype": "191",
+    "title": "RAF Fairford Intrusion Suspect Contacted Police Emergency Line After Farmer Alerted Authorities",
+    "summary": "Investigation into the security incident at RAF Fairford revealed an intruder suspect dialed police dispatch approximately one hour after a local farmer first spotted suspicious activity.",
+    "occurredAt": "2026-09-30T00:00:00Z",
+    "updatedAt": "2026-09-30T00:00:00Z",
+    "endedAt": null,
+    "lng": -1.78333,
+    "lat": 51.7,
+    "altM": null,
+    "geoPrecision": "city",
+    "geoSource": "native",
+    "weight": 88,
+    "significance": 97.75,
+    "countryIso3": null,
+    "keywords": [],
+    "entities": [
+      {
+        "type": "actor",
+        "text": "FARMER",
+        "confidence": 1
+      },
+      {
+        "type": "actor",
+        "text": "UNITED KINGDOM",
+        "confidence": 1
+      }
+    ],
+    "rawRef": null,
+    "tags": [
+      "terror",
+      "191"
+    ],
+    "attributes": {}
+  },
+  {
+    "id": "gnews:d647f6742b57",
+    "source": "news",
+    "sourceUrl": "https://www.straitstimes.com/asia/east-asia/china-slams-us-lie-over-starbucks-stores-in-xinjiang",
+    "imageUrl": null,
+    "layerId": "politics",
+    "subtype": null,
+    "title": "China slams US ‘lie’ over Starbucks stores in Xinjiang",
+    "summary": "China has strongly rejected accusations from a United States congressional committee regarding the opening of Starbucks cafes in the Xinjiang region. The dispute highlights ongoing geopolitical tensions surrounding human rights allegations and corporate presence in the area. Beijing dismissed the claims as fabrications, defending economic development and commerce within the region.",
+    "occurredAt": "2026-10-03T15:08:00Z",
+    "updatedAt": "2026-10-04T03:10:22.622587Z",
+    "endedAt": null,
+    "lng": 85.4633464,
+    "lat": 42.4804953,
+    "altM": null,
+    "geoPrecision": "region",
+    "geoSource": "gemini",
+    "weight": null,
+    "significance": 65,
+    "countryIso3": null,
     "keywords": [
       {
-        "text": "Napa",
-        "type": "place",
-        "confidence": 0.9
+        "text": "geopolitics",
+        "relevance": 0.95,
+        "type": "topic"
+      },
+      {
+        "text": "international relations",
+        "relevance": 0.92,
+        "type": "topic"
+      },
+      {
+        "text": "human rights",
+        "relevance": 0.9,
+        "type": "concept"
+      },
+      {
+        "text": "China",
+        "relevance": 0.98,
+        "type": "location"
+      },
+      {
+        "text": "United States",
+        "relevance": 0.95,
+        "type": "location"
+      },
+      {
+        "text": "Xinjiang",
+        "relevance": 0.96,
+        "type": "location"
+      },
+      {
+        "text": "Starbucks",
+        "relevance": 0.94,
+        "type": "organization"
+      },
+      {
+        "text": "corporate responsibility",
+        "relevance": 0.85,
+        "type": "concept"
+      },
+      {
+        "text": "diplomatic tension",
+        "relevance": 0.88,
+        "type": "event"
+      },
+      {
+        "text": "retail industry",
+        "relevance": 0.8,
+        "type": "industry"
       }
     ],
     "entities": [],
-    "rawRef": "raw.ingest_batch:usgs-fixture-001",
+    "rawRef": null,
     "tags": [],
-    "attributes": {
-      "magnitude": 6.2,
-      "depth_km": 10
-    }
+    "attributes": {}
   },
   {
-    "id": "firms:viirs:20261003:napa",
-    "source": "firms",
-    "sourceUrl": "https://firms.modaps.eosdis.nasa.gov/map/#d:2026-10-03;l:VIIRS_SNPP_NRT;@-122.35,38.55,8z",
+    "id": "gnews:2808362a0ca7",
+    "source": "news",
+    "sourceUrl": "https://www.yahoo.com/news/world/articles/jack-dorsey-bitchat-disappears-app-150201502.html",
     "imageUrl": null,
-    "layerId": "wildfire",
+    "layerId": "technology",
     "subtype": null,
-    "title": "VIIRS hotspot cluster north of Napa Valley",
-    "summary": "NASA FIRMS native hotspot. Cite NASA FIRMS. Heatmap-first; this row is a marker fixture.",
-    "occurredAt": "2026-10-03T11:40:00Z",
-    "updatedAt": "2026-10-03T11:55:00Z",
+    "title": "Jack Dorsey’s Bitchat disappears from app stores in India after government order",
+    "summary": "Jack Dorsey's decentralized messaging app, Bitchat, has disappeared from mobile application stores in India following a government directive. The restriction has made the application largely unavailable to users within the country, highlighting ongoing tensions between tech platforms and regulatory bodies regarding content and availability.",
+    "occurredAt": "2026-10-03T15:02:01Z",
+    "updatedAt": "2026-10-04T03:10:22.622587Z",
     "endedAt": null,
-    "lng": -122.35,
-    "lat": 38.55,
+    "lng": 78.6677428,
+    "lat": 22.3511148,
     "altM": null,
-    "geoPrecision": "point",
-    "geoSource": "native",
-    "weight": 42.5,
-    "significance": 55,
+    "geoPrecision": "country",
+    "geoSource": "gemini",
+    "weight": null,
+    "significance": 50,
     "countryIso3": null,
-    "keywords": [],
+    "keywords": [
+      {
+        "text": "Bitchat",
+        "relevance": 0.98,
+        "type": "technology"
+      },
+      {
+        "text": "Jack Dorsey",
+        "relevance": 0.95,
+        "type": "person"
+      },
+      {
+        "text": "India",
+        "relevance": 0.95,
+        "type": "location"
+      },
+      {
+        "text": "app store ban",
+        "relevance": 0.9,
+        "type": "event"
+      },
+      {
+        "text": "government censorship",
+        "relevance": 0.88,
+        "type": "topic"
+      },
+      {
+        "text": "messaging app",
+        "relevance": 0.85,
+        "type": "technology"
+      },
+      {
+        "text": "regulation",
+        "relevance": 0.82,
+        "type": "concept"
+      },
+      {
+        "text": "digital rights",
+        "relevance": 0.8,
+        "type": "topic"
+      },
+      {
+        "text": "telecommunications",
+        "relevance": 0.75,
+        "type": "industry"
+      },
+      {
+        "text": "Indian government",
+        "relevance": 0.85,
+        "type": "organization"
+      }
+    ],
     "entities": [],
-    "rawRef": "raw.ingest_batch:firms-fixture-001",
+    "rawRef": null,
     "tags": [],
-    "attributes": {
-      "max_frp": 42.5,
-      "hotspot_count": 12
-    }
+    "attributes": {}
   },
   {
-    "id": "gnews:fixture123",
-    "source": "gnews",
-    "sourceUrl": "https://example.com/news/napa-earthquake-smoke",
+    "id": "wikifeeds:760258a3e6f6",
+    "source": "news",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Emergency_Economic_Stabilization_Act_of_2008",
     "imageUrl": null,
-    "layerId": "news",
+    "layerId": "finance",
     "subtype": null,
-    "title": "Local outlets report shaking and smoke in Napa County",
-    "summary": "Curated headline fixture. Coordinates are a city-scale geocode, not a sensor point.",
-    "occurredAt": "2026-10-03T13:20:00Z",
-    "updatedAt": "2026-10-03T13:20:00Z",
+    "title": "The Emergency Economic Stabilization Act of 2008, establishing the Troubled Asset Relief Program, commonly referred to as a bailout of the U.",
+    "summary": "The Emergency Economic Stabilization Act of 2008 was enacted by the U.S. government in response to the subprime mortgage crisis, establishing the Troubled Asset Relief Program (TARP). This massive financial intervention authorized the U.S. Treasury to purchase troubled assets and inject capital into struggling financial institutions to prevent a total collapse of the financial system. The legislation remains one of the largest government bailout programs in American history.",
+    "occurredAt": "2026-10-03T00:00:00Z",
+    "updatedAt": "2026-10-04T03:10:23.270394Z",
     "endedAt": null,
-    "lng": -122.2869,
-    "lat": 38.2975,
+    "lng": -77.0363849,
+    "lat": 38.8950982,
+    "altM": null,
+    "geoPrecision": "region",
+    "geoSource": "gemini",
+    "weight": null,
+    "significance": 95,
+    "countryIso3": null,
+    "keywords": [
+      {
+        "text": "Emergency Economic Stabilization Act of 2008",
+        "relevance": 1.0,
+        "type": "event"
+      },
+      {
+        "text": "Troubled Asset Relief Program",
+        "relevance": 0.98,
+        "type": "organization"
+      },
+      {
+        "text": "bailout",
+        "relevance": 0.95,
+        "type": "concept"
+      },
+      {
+        "text": "financial crisis",
+        "relevance": 0.92,
+        "type": "event"
+      },
+      {
+        "text": "United States",
+        "relevance": 0.9,
+        "type": "location"
+      },
+      {
+        "text": "banking",
+        "relevance": 0.85,
+        "type": "industry"
+      },
+      {
+        "text": "economy",
+        "relevance": 0.88,
+        "type": "topic"
+      },
+      {
+        "text": "U.S. Department of the Treasury",
+        "relevance": 0.82,
+        "type": "organization"
+      },
+      {
+        "text": "legislation",
+        "relevance": 0.8,
+        "type": "topic"
+      },
+      {
+        "text": "subprime mortgage crisis",
+        "relevance": 0.85,
+        "type": "event"
+      }
+    ],
+    "entities": [],
+    "rawRef": null,
+    "tags": [],
+    "attributes": {}
+  },
+  {
+    "id": "gnews:ad4f81d7d13c",
+    "source": "news",
+    "sourceUrl": "https://leadership.ng/businesses-face-n100m-penalty-as-fccpc-plans-ai-marketing-regulation/",
+    "imageUrl": null,
+    "layerId": "business",
+    "subtype": null,
+    "title": "Businesses Face N100m Penalty, As FCCPC Plans AI Marketing Regulation",
+    "summary": "The Federal Competition and Consumer Protection Commission (FCCPC) in Nigeria has proposed new regulations to govern AI-driven marketing messages. Under these proposed rules, businesses could face penalties of up to N100 million for failing to be accountable for AI-generated marketing content.",
+    "occurredAt": "2026-10-03T14:51:56Z",
+    "updatedAt": "2026-10-04T03:10:22.622587Z",
+    "endedAt": null,
+    "lng": 7.9999721,
+    "lat": 9.6000359,
+    "altM": null,
+    "geoPrecision": "country",
+    "geoSource": "gemini",
+    "weight": null,
+    "significance": 45,
+    "countryIso3": null,
+    "keywords": [
+      {
+        "text": "artificial intelligence",
+        "relevance": 0.95,
+        "type": "topic"
+      },
+      {
+        "text": "AI regulation",
+        "relevance": 0.92,
+        "type": "concept"
+      },
+      {
+        "text": "marketing",
+        "relevance": 0.9,
+        "type": "topic"
+      },
+      {
+        "text": "Federal Competition and Consumer Protection Commission",
+        "relevance": 0.95,
+        "type": "organization"
+      },
+      {
+        "text": "FCCPC",
+        "relevance": 0.95,
+        "type": "organization"
+      },
+      {
+        "text": "Nigeria",
+        "relevance": 0.94,
+        "type": "location"
+      },
+      {
+        "text": "consumer protection",
+        "relevance": 0.88,
+        "type": "concept"
+      },
+      {
+        "text": "penalty",
+        "relevance": 0.85,
+        "type": "concept"
+      },
+      {
+        "text": "business compliance",
+        "relevance": 0.82,
+        "type": "topic"
+      },
+      {
+        "text": "digital marketing",
+        "relevance": 0.8,
+        "type": "industry"
+      }
+    ],
+    "entities": [],
+    "rawRef": null,
+    "tags": [],
+    "attributes": {}
+  },
+  {
+    "id": "gnews:4ed2a481fb1f",
+    "source": "news",
+    "sourceUrl": "https://www.medicalnewstoday.com/articles/ai-model-may-predict-pancreatic-cancer-risk-up-to-5-years-before-diagnosis",
+    "imageUrl": null,
+    "layerId": "health",
+    "subtype": null,
+    "title": "New AI model may identify pancreatic cancer risk up to 5 years early",
+    "summary": "Researchers at the Mayo Clinic have developed a new artificial intelligence model capable of identifying individuals at high risk for pancreatic cancer up to five years prior to formal diagnosis. By analyzing routine electronic health records and laboratory data, the technology could significantly improve early detection rates for one of the deadliest forms of cancer. This breakthrough highlights the growing potential of machine learning tools in proactive healthcare and preventive oncology.",
+    "occurredAt": "2026-10-03T14:45:36Z",
+    "updatedAt": "2026-10-04T03:10:22.622587Z",
+    "endedAt": null,
+    "lng": -77.615214,
+    "lat": 43.157285,
     "altM": null,
     "geoPrecision": "city",
     "geoSource": "gemini",
     "weight": null,
-    "significance": 40,
+    "significance": 65,
     "countryIso3": null,
     "keywords": [
       {
-        "text": "Napa County",
-        "type": "location",
-        "relevance": 0.9
+        "text": "pancreatic cancer",
+        "relevance": 0.98,
+        "type": "topic"
       },
       {
-        "text": "earthquake",
-        "type": "event",
-        "relevance": 0.85
+        "text": "artificial intelligence",
+        "relevance": 0.95,
+        "type": "topic"
+      },
+      {
+        "text": "Mayo Clinic",
+        "relevance": 0.92,
+        "type": "organization"
+      },
+      {
+        "text": "early detection",
+        "relevance": 0.9,
+        "type": "concept"
+      },
+      {
+        "text": "machine learning",
+        "relevance": 0.88,
+        "type": "technology"
+      },
+      {
+        "text": "electronic health records",
+        "relevance": 0.85,
+        "type": "technology"
+      },
+      {
+        "text": "oncology",
+        "relevance": 0.82,
+        "type": "industry"
+      },
+      {
+        "text": "cancer screening",
+        "relevance": 0.8,
+        "type": "concept"
+      },
+      {
+        "text": "United States",
+        "relevance": 0.75,
+        "type": "location"
+      }
+    ],
+    "entities": [],
+    "rawRef": null,
+    "tags": [],
+    "attributes": {}
+  },
+  {
+    "id": "gnews:7145082f0962",
+    "source": "news",
+    "sourceUrl": "https://oilprice.com/Energy/Energy-General/Latin-America-Could-Double-Its-Onshore-Wind-Capacity-by-2035.html",
+    "imageUrl": null,
+    "layerId": "environment",
+    "subtype": null,
+    "title": "Latin America Could Double Its Onshore Wind Capacity by 2035",
+    "summary": "Latin America has the potential to double its onshore wind capacity to over 120 GW by 2035, driven by expanding energy demands and renewable goals. However, significant infrastructure challenges such as grid limitations and market oversupply threaten the pace and success of this build-out in key nations like Brazil, Mexico, and Argentina.",
+    "occurredAt": "2026-10-03T15:00:00Z",
+    "updatedAt": "2026-10-04T03:10:22.622587Z",
+    "endedAt": null,
+    "lng": -55.4915,
+    "lat": -8.7832,
+    "altM": null,
+    "geoPrecision": "continent",
+    "geoSource": "gemini",
+    "weight": null,
+    "significance": 45,
+    "countryIso3": null,
+    "keywords": [
+      {
+        "text": "renewable energy",
+        "relevance": 0.98,
+        "type": "topic"
+      },
+      {
+        "text": "wind power",
+        "relevance": 0.95,
+        "type": "technology"
+      },
+      {
+        "text": "Latin America",
+        "relevance": 0.95,
+        "type": "location"
+      },
+      {
+        "text": "Brazil",
+        "relevance": 0.88,
+        "type": "location"
+      },
+      {
+        "text": "Mexico",
+        "relevance": 0.88,
+        "type": "location"
+      },
+      {
+        "text": "Argentina",
+        "relevance": 0.88,
+        "type": "location"
+      },
+      {
+        "text": "energy infrastructure",
+        "relevance": 0.85,
+        "type": "concept"
+      },
+      {
+        "text": "power grid",
+        "relevance": 0.82,
+        "type": "technology"
+      },
+      {
+        "text": "energy industry",
+        "relevance": 0.8,
+        "type": "industry"
+      },
+      {
+        "text": "climate change mitigation",
+        "relevance": 0.75,
+        "type": "concept"
+      }
+    ],
+    "entities": [],
+    "rawRef": null,
+    "tags": [],
+    "attributes": {}
+  },
+  {
+    "id": "wikifeeds:7ae6709163be",
+    "source": "news",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Operation_Hurricane",
+    "imageUrl": null,
+    "layerId": "science",
+    "subtype": null,
+    "title": "The United Kingdom successfully conducted its first nuclear test, becoming the world's third state with nuclear weapons.",
+    "summary": "The United Kingdom successfully conducted its first nuclear weapons test, codenamed Operation Hurricane, near the Montebello Islands off the coast of Australia. This milestone made the UK the world's third nuclear-armed state, following the United States and the Soviet Union. The successful test marked a significant advancement in the nation's military capabilities and Cold War defense strategy.",
+    "occurredAt": "2026-10-03T00:00:00Z",
+    "updatedAt": "2026-10-04T03:10:23.270394Z",
+    "endedAt": null,
+    "lng": -3.2765753,
+    "lat": 54.7023545,
+    "altM": null,
+    "geoPrecision": "country",
+    "geoSource": "gemini",
+    "weight": null,
+    "significance": 75,
+    "countryIso3": null,
+    "keywords": [
+      {
+        "text": "nuclear test",
+        "relevance": 1.0,
+        "type": "event"
+      },
+      {
+        "text": "Operation Hurricane",
+        "relevance": 0.95,
+        "type": "event"
+      },
+      {
+        "text": "United Kingdom",
+        "relevance": 0.95,
+        "type": "location"
+      },
+      {
+        "text": "nuclear weapons",
+        "relevance": 0.92,
+        "type": "technology"
+      },
+      {
+        "text": "military history",
+        "relevance": 0.85,
+        "type": "topic"
+      },
+      {
+        "text": "Cold War",
+        "relevance": 0.82,
+        "type": "concept"
+      },
+      {
+        "text": "defense technology",
+        "relevance": 0.8,
+        "type": "industry"
+      },
+      {
+        "text": "nuclear power",
+        "relevance": 0.78,
+        "type": "concept"
+      },
+      {
+        "text": "Montebello Islands",
+        "relevance": 0.75,
+        "type": "location"
+      },
+      {
+        "text": "Australia",
+        "relevance": 0.7,
+        "type": "location"
+      }
+    ],
+    "entities": [],
+    "rawRef": null,
+    "tags": [],
+    "attributes": {}
+  },
+  {
+    "id": "wikifeeds:11b7a4640976",
+    "source": "news",
+    "sourceUrl": "https://en.wikipedia.org/wiki/2013_Lampedusa_migrant_shipwreck",
+    "imageUrl": null,
+    "layerId": "humanitarian",
+    "subtype": null,
+    "title": "A boat carrying migrants from Libya to Italy sank off the Italian island of Lampedusa, resulting in more than 360 deaths.",
+    "summary": "A migrant ship traveling from Libya to Italy sank off the coast of the Italian island of Lampedusa, resulting in a tragic loss of over 360 lives. The disaster highlighted the ongoing dangers faced by migrants crossing the Mediterranean Sea and sparked international debates on migration policies and search-and-rescue operations.",
+    "occurredAt": "2026-10-03T00:00:00Z",
+    "updatedAt": "2026-10-04T03:10:23.270394Z",
+    "endedAt": null,
+    "lng": 12.5962914,
+    "lat": 35.5111342,
+    "altM": null,
+    "geoPrecision": "city",
+    "geoSource": "gemini",
+    "weight": null,
+    "significance": 75,
+    "countryIso3": null,
+    "keywords": [
+      {
+        "text": "migrant shipwreck",
+        "relevance": 1.0,
+        "type": "event"
+      },
+      {
+        "text": "Lampedusa",
+        "relevance": 0.95,
+        "type": "location"
+      },
+      {
+        "text": "Italy",
+        "relevance": 0.92,
+        "type": "location"
+      },
+      {
+        "text": "Libya",
+        "relevance": 0.9,
+        "type": "location"
+      },
+      {
+        "text": "Mediterranean migration",
+        "relevance": 0.88,
+        "type": "topic"
+      },
+      {
+        "text": "humanitarian crisis",
+        "relevance": 0.85,
+        "type": "topic"
+      },
+      {
+        "text": "refugees",
+        "relevance": 0.82,
+        "type": "entity"
+      },
+      {
+        "text": "search and rescue",
+        "relevance": 0.8,
+        "type": "concept"
+      },
+      {
+        "text": "migration policy",
+        "relevance": 0.78,
+        "type": "concept"
+      },
+      {
+        "text": "disaster",
+        "relevance": 0.75,
+        "type": "event"
+      }
+    ],
+    "entities": [],
+    "rawRef": null,
+    "tags": [],
+    "attributes": {}
+  },
+  {
+    "id": "gnews:77ee4ebfedd3",
+    "source": "news",
+    "sourceUrl": "https://united24media.com/war-in-ukraine/putins-claims-of-russian-battlefield-gains-border-on-hallucinations-isw-says-23087",
+    "imageUrl": null,
+    "layerId": "conflict",
+    "subtype": null,
+    "title": "Putin’s Claims of Russian Battlefield Gains “Border on Hallucinations,” ISW Says",
+    "summary": "Data from the Institute for the Study of War (ISW) directly contradicts claims made by Russian President Vladimir Putin regarding territorial gains in September. While Putin claimed significant advancements, geospatial analysis shows that Russian forces actually suffered a net territorial loss of over 80 square kilometers during that period. This discrepancy highlights the ongoing information warfare and contested narratives surrounding the front lines of the Russia-Ukraine war.",
+    "occurredAt": "2026-10-03T15:00:28Z",
+    "updatedAt": "2026-10-04T03:10:22.622587Z",
+    "endedAt": null,
+    "lng": 31.2718321,
+    "lat": 49.4871968,
+    "altM": null,
+    "geoPrecision": "country",
+    "geoSource": "gemini",
+    "weight": null,
+    "significance": 75,
+    "countryIso3": null,
+    "keywords": [
+      {
+        "text": "Russia-Ukraine War",
+        "relevance": 0.98,
+        "type": "event"
+      },
+      {
+        "text": "Vladimir Putin",
+        "relevance": 0.95,
+        "type": "person"
+      },
+      {
+        "text": "Institute for the Study of War",
+        "relevance": 0.94,
+        "type": "organization"
+      },
+      {
+        "text": "ISW",
+        "relevance": 0.92,
+        "type": "organization"
+      },
+      {
+        "text": "military strategy",
+        "relevance": 0.88,
+        "type": "concept"
+      },
+      {
+        "text": "battlefield gains",
+        "relevance": 0.85,
+        "type": "concept"
+      },
+      {
+        "text": "territorial control",
+        "relevance": 0.83,
+        "type": "concept"
+      },
+      {
+        "text": "propaganda",
+        "relevance": 0.78,
+        "type": "topic"
+      },
+      {
+        "text": "geospatial analysis",
+        "relevance": 0.75,
+        "type": "topic"
+      },
+      {
+        "text": "Ukraine",
+        "relevance": 0.95,
+        "type": "location"
+      },
+      {
+        "text": "Russia",
+        "relevance": 0.95,
+        "type": "location"
+      },
+      {
+        "text": "military conflict",
+        "relevance": 0.9,
+        "type": "topic"
       }
     ],
     "entities": [],

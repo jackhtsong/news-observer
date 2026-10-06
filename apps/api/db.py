@@ -15,6 +15,11 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+# Only categories the shared Event schema still lists are served; rows of retired
+# categories (such as the former natural-hazard layers) stay out of the API.
+LAYER_IDS: list[str] = json.loads(
+    (REPO_ROOT / "packages" / "schema" / "event.schema.json").read_text(encoding="utf-8")
+)["properties"]["layerId"]["enum"]
 
 _EVENT_SQL = """
 SELECT
@@ -50,39 +55,18 @@ SELECT
   ) AS tags,
   COALESCE(
     CASE e.category
-      WHEN 'earthquake' THEN (to_jsonb(eq) - 'event_id' - 'footprint')
-      WHEN 'wildfire' THEN (to_jsonb(wf) - 'event_id' - 'footprint')
-      WHEN 'cyclone' THEN (to_jsonb(cy) - 'event_id' - 'footprint')
-      WHEN 'flood' THEN (to_jsonb(fl) - 'event_id' - 'footprint')
-      WHEN 'volcano' THEN (to_jsonb(vo) - 'event_id' - 'footprint')
-      WHEN 'drought' THEN (to_jsonb(dr) - 'event_id' - 'footprint')
       WHEN 'conflict' THEN (to_jsonb(cf) - 'event_id')
       WHEN 'protest' THEN (to_jsonb(pr) - 'event_id')
       WHEN 'strategic_development' THEN (to_jsonb(sd) - 'event_id')
       ELSE '{}'::jsonb
     END,
     '{}'::jsonb
-  ) || CASE
-    WHEN hx.event_id IS NULL THEN '{}'::jsonb
-    ELSE jsonb_build_object(
-      'people_exposed', hx.people_exposed,
-      'radius_km', hx.radius_km,
-      'impact_score', hx.impact_score,
-      'impact_class', hx.impact_class,
-      'exposure_source', hx.exposure_source
-    )
-  END AS attributes
+  ) AS attributes
 FROM mart.event e
-LEFT JOIN mart.earthquake eq ON eq.event_id = e.event_id
-LEFT JOIN mart.wildfire wf ON wf.event_id = e.event_id
-LEFT JOIN mart.cyclone cy ON cy.event_id = e.event_id
-LEFT JOIN mart.flood fl ON fl.event_id = e.event_id
-LEFT JOIN mart.volcano vo ON vo.event_id = e.event_id
-LEFT JOIN mart.drought dr ON dr.event_id = e.event_id
 LEFT JOIN mart.conflict cf ON cf.event_id = e.event_id
 LEFT JOIN mart.protest pr ON pr.event_id = e.event_id
 LEFT JOIN mart.strategic_development sd ON sd.event_id = e.event_id
-LEFT JOIN mart.hazard_exposure hx ON hx.event_id = e.event_id
+WHERE e.category = ANY(%(layers)s)
 """
 
 
@@ -267,6 +251,7 @@ def fetch_mart_events(*, ping: DatabasePing | None = None) -> tuple[list[dict[st
         with conn.cursor() as cur:
             cur.execute(
                 _EVENT_SQL + "\nORDER BY e.occurred_at DESC, e.event_id",
+                {"layers": LAYER_IDS},
             )
             columns = [col.name for col in cur.description]
             events = [_row_to_event(dict(zip(columns, row, strict=True))) for row in cur.fetchall()]
@@ -318,56 +303,6 @@ def fetch_links_for_event(event_id: str | None) -> list[dict[str, Any]] | None:
             return links
     except Exception:  # noqa: BLE001
         return None
-    finally:
-        conn.close()
-
-
-def load_feed_events(layers: list[str], significance_floor: float) -> list[dict[str, Any]]:
-    """Recent events for the personalisation job. Raises if the database is down."""
-    conn = _connect()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                _EVENT_SQL
-                + """
-                WHERE e.category = ANY(%s)
-                  AND e.significance >= %s
-                  AND e.occurred_at >= NOW() - INTERVAL '7 days'
-                ORDER BY e.occurred_at DESC
-                LIMIT 5000
-                """,
-                (layers, significance_floor),
-            )
-            columns = [col.name for col in cur.description]
-            return [_row_to_event(dict(zip(columns, row, strict=True))) for row in cur.fetchall()]
-    finally:
-        conn.close()
-
-
-def write_event_links(links: list[dict[str, Any]]) -> None:
-    conn = _connect()
-    try:
-        with conn.cursor() as cur:
-            for link in links:
-                cur.execute(
-                    """
-                    INSERT INTO mart.event_link
-                      (link_id, source_id, target_id, relation, confidence, rationale, citations, model)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s)
-                    ON CONFLICT (link_id) DO NOTHING
-                    """,
-                    (
-                        link["id"],
-                        link["sourceId"],
-                        link["targetId"],
-                        link["relation"],
-                        link["confidence"],
-                        link.get("rationale"),
-                        json.dumps(link.get("citations") or []),
-                        link.get("model"),
-                    ),
-                )
-        conn.commit()
     finally:
         conn.close()
 

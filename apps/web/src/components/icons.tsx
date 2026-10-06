@@ -3,7 +3,6 @@ import type { CategoryId } from "@/lib/layers";
 
 // 24px stroke icons; color follows `currentColor`.
 const paths: Record<IconId, ReactNode> = {
-  hazards: <><path d="M12 3 2 20h20L12 3z" /><path d="M12 10v4" /><path d="M12 17h.01" /></>,
   security: <path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3z" />,
   politics: <><circle cx="12" cy="12" r="9" /><ellipse cx="12" cy="12" rx="4" ry="9" /><path d="M3 12h18" /></>,
   economy: <><path d="m3 17 6-6 4 4 8-8" /><path d="M15 7h6v6" /></>,

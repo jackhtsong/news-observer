@@ -10,7 +10,7 @@ const compiled = ts.transpileModule(source, {
 }).outputText;
 const { getEvents, getEventLinks, getLinks } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`);
 const fixtures = JSON.parse(readFileSync(new URL("./fixtures/events.json", import.meta.url), "utf8"));
-const liveStatus = { usgs: "ok", firms: "unknown", tigerdata: "ok" };
+const liveStatus = { news: "ok", gdelt: "unknown", tigerdata: "ok" };
 const response = (events, nextCursor = null, sourceStatus = liveStatus) => Response.json({
   generatedAt: "2026-10-03T12:00:00Z", events, nextCursor, sourceStatus,
 }, { headers: { "X-Data-Mode": "api" } });
@@ -45,12 +45,12 @@ test("does not retry an endlessly changing dataset", async () => {
 });
 
 test("labels API-served fallback fixtures as samples", async () => {
-  mock.method(globalThis, "fetch", async () => response(fixtures, null, { usgs: "fixture", firms: "fixture", tigerdata: "dark" }));
+  mock.method(globalThis, "fetch", async () => response(fixtures, null, { news: "fixture", gdelt: "fixture", tigerdata: "dark" }));
   assert.equal((await getEvents()).mode, "fixture");
 });
 
 test("does not label unknown snapshot data as samples", async () => {
-  mock.method(globalThis, "fetch", async () => response(fixtures, null, { usgs: "unknown", firms: "unknown", tigerdata: "fixture" }));
+  mock.method(globalThis, "fetch", async () => response(fixtures, null, { news: "unknown", gdelt: "unknown", tigerdata: "fixture" }));
   assert.equal((await getEvents()).mode, "api");
 });
 

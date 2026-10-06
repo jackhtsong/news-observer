@@ -4,10 +4,8 @@ export const CATEGORIES = [
   { id: "security", label: "Conflict & Security", layers: ["conflict", "terror", "crime", "protest", "strategic_development"] },
   { id: "politics", label: "Politics & World", layers: ["politics", "world", "news", "media"] },
   { id: "economy", label: "Economy & Tech", layers: ["finance", "business", "technology", "science"] },
-  { id: "society", label: "Humanitarian & Health", layers: ["humanitarian", "famine", "health", "education"] },
+  { id: "society", label: "Humanitarian & Health", layers: ["humanitarian", "famine", "health", "education", "environment"] },
   { id: "culture", label: "Culture & Lifestyle", layers: ["culture", "entertainment", "sports", "fashion", "travel", "food"] },
-  // Last, so Natural Hazards sits at the bottom of the layer rail.
-  { id: "hazards", label: "Natural Hazards", layers: ["earthquake", "wildfire", "cyclone", "flood", "volcano", "drought", "environment"] },
 ] as const;
 export type CategoryId = typeof CATEGORIES[number]["id"];
 export const LAYER_IDS = CATEGORIES.flatMap(category => category.layers);
@@ -21,20 +19,12 @@ export type Filters = { layers: LayerState; time: TimeWindow; minSignificance: n
 export type HeatmapPoint = { lat: number; lng: number; weight: number };
 export type CategoryHeatmap = { id: CategoryId; points: HeatmapPoint[] };
 export const LABELS: Record<LayerId, string> = {
-  earthquake: "Earthquakes", wildfire: "Wildfires", cyclone: "Cyclones", flood: "Floods", volcano: "Volcanoes", drought: "Droughts", environment: "Environment",
   conflict: "Conflict", terror: "Terror", crime: "Crime", protest: "Protests", strategic_development: "Strategic developments",
   politics: "Government & Politics", world: "World", news: "News", media: "Media",
   finance: "Finance", business: "Business", technology: "Technology", science: "Science",
-  humanitarian: "Society", famine: "Famine", health: "Health", education: "Education",
+  humanitarian: "Society", famine: "Famine", health: "Health", education: "Education", environment: "Environment",
   culture: "Culture", entertainment: "Entertainment", sports: "Sports", fashion: "Fashion", travel: "Travel", food: "Food",
 };
-/** Singular kind for a natural-hazard card. Null for news and other layers. */
-const HAZARD_KINDS: Partial<Record<LayerId, string>> = {
-  earthquake: "Earthquake", wildfire: "Wildfire", cyclone: "Cyclone", flood: "Flood", volcano: "Volcano", drought: "Drought", environment: "Environment",
-};
-export function hazardLabel(layerId: string): string | null {
-  return HAZARD_KINDS[layerId as LayerId] ?? null;
-}
 // Every layer in these categories starts on; all other categories start off.
 export const DEFAULT_CATEGORIES: CategoryId[] = ["security", "politics", "economy"];
 export function defaultLayers(): LayerState {
@@ -82,13 +72,13 @@ export function writeFilters(search: string, filters: Filters) {
   return params.toString();
 }
 /** Headlines: a top-stories overview for everyone. Explore: every event your filters allow. */
-export type ViewTab = "headlines" | "explore" | "feed";
-const TABS: ViewTab[] = ["headlines", "explore", "feed"];
+export type ViewTab = "headlines" | "explore";
+const TABS: ViewTab[] = ["headlines", "explore"];
 export const parseTab = (search: string): ViewTab => {
   const tab = new URLSearchParams(search).get("tab");
   return TABS.includes(tab as ViewTab) ? tab as ViewTab : "headlines";
 };
-/** Headlines and My Feed are curated lists shown the same way (pins, ring cards, briefing, tour). */
+/** Headlines is a curated list (pins, ring cards, briefing, tour); Explore shows everything. */
 export const isCurated = (tab: ViewTab) => tab !== "explore";
 export function writeTab(search: string, tab: ViewTab) {
   const params = new URLSearchParams(search);

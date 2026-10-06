@@ -1,16 +1,20 @@
-import type { events, links } from "./fixtures";
+import type { events } from "./fixtures";
 export type Event = Omit<(typeof events)[number], "sourceUrl" | "imageUrl" | "summary" | "rawRef"> & {
   sourceUrl: string | null;
   /** Article thumbnail, loaded directly from the publisher; null when none is known. */
   imageUrl: string | null;
   summary: string | null;
   rawRef: string | null;
-  /** Kind-table columns, plus GHSL exposure when the hazard job has scored the event. */
+  /** Kind-table columns (e.g. conflict actors and location); empty for news. */
   attributes?: Record<string, unknown>;
 };
 /** News↔news links store scores in citations; other links store a list. */
 export type LinkScores = { plausibility?: number; evidence?: number; verdict?: string; world_knowledge?: string[] };
-export type EventLink = Omit<(typeof links)[number], "citations"> & { citations: unknown[] | LinkScores };
+/** A relationship hypothesis between two events (packages/schema/link.schema.json). */
+export type EventLink = {
+  id: string; sourceId: string; targetId: string; relation: string; confidence: number;
+  rationale: string; citations: unknown[] | LinkScores; model: string;
+};
 export type EventsResponse = {
   generatedAt: string;
   sourceStatus: Record<string, string>;
@@ -38,7 +42,7 @@ export async function getEvents(signal?: AbortSignal) {
       const page = (await response.json()) as EventsResponse;
       collected.push(...page.events);
       if (!page.nextCursor) {
-        const samples = page.sourceStatus.usgs === "fixture" && page.sourceStatus.firms === "fixture";
+        const samples = page.sourceStatus.news === "fixture" && page.sourceStatus.gdelt === "fixture";
         return {
           data: { ...page, events: collected },
           mode: samples ? "fixture" : response.headers.get("X-Data-Mode") ?? "unknown",

@@ -3,19 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type CSSProperties } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 import { AdditiveBlending, AlwaysStencilFunc, AmbientLight, BackSide, BufferAttribute, BufferGeometry, CatmullRomCurve3, Color, CylinderGeometry, DirectionalLight, EqualStencilFunc, FrontSide, Group, Mesh, MeshBasicMaterial, MeshLambertMaterial, PerspectiveCamera, Raycaster, ReplaceStencilOp, ShaderMaterial, SphereGeometry, TubeGeometry, Vector2, Vector3, type Material, type Object3D } from "three";
-import { CATEGORIES, LABELS, hazardLabel, isCurated, type CategoryHeatmap, type CategoryId, type LayerId, type ViewTab } from "@/lib/layers";
-import type { FeedEvent } from "@/lib/profile";
-import StoryActions, { type Personal } from "@/components/story-actions";
-
-/** My Feed's own controls, shown under the tabs. */
-export type FeedControls = {
-  section: "for-you" | "saved";
-  onSection: (section: "for-you" | "saved") => void;
-  saved: number;
-  loading: boolean;
-  error?: string;
-  onStartOver: () => void;
-};
+import { CATEGORIES, LABELS, isCurated, type CategoryHeatmap, type CategoryId, type LayerId, type ViewTab } from "@/lib/layers";
 import { densityField, heatmapSegments, sphereGrid, type SphereGrid } from "@/lib/heatmap-density";
 import type { Event, EventLink } from "@/lib/api";
 import { continentMaterial } from "@/lib/continent-material";
@@ -29,7 +17,7 @@ import RelatedEventControls, { relationLabel } from "@/components/related-event-
 import LinkCard from "@/components/link-card";
 import DetailsPanel from "@/components/details-panel";
 import { closeStory, focusStory, hasStory, openStory, storyLeaves, storyRoot, type StoryTree } from "@/lib/story-tree";
-import { impactLabel, rankOf, tourOrder } from "@/lib/briefing";
+import { rankOf, tourOrder } from "@/lib/briefing";
 import ClusterPanel from "@/components/cluster-panel";
 import { Thumbnail, TimeAgo } from "@/components/event-media";
 import { exactTime } from "@/lib/freshness";
@@ -353,15 +341,11 @@ function disposeArc(arc: Arc) {
   }
 }
 
-export default function EventGlobe({ view, headlines, personal, feed, allEvents, links, events, linkable, selectedCountries, onToggleCountry, heatmaps, selection, onSelect, fixture }: {
-  /** headlines / feed: a curated list as pins with floating cards. explore: every filtered event, clustered. */
+export default function EventGlobe({ view, headlines, allEvents, links, events, linkable, selectedCountries, onToggleCountry, heatmaps, selection, onSelect, fixture }: {
+  /** headlines: a curated list as pins with floating cards. explore: every filtered event, clustered. */
   view: ViewTab;
-  /** The curated list: the Headlines feed, or My Feed. Map filters do not apply to it. */
-  headlines: FeedEvent[];
-  /** Save and More/Less like this, when the profile API is available. */
-  personal: Personal | null;
-  /** My Feed's own controls: For you vs Reading list, plus loading and empty states. */
-  feed: FeedControls | null;
+  /** The curated Headlines list. Map filters do not apply to it. */
+  headlines: Event[];
   allEvents: Event[];
   /** Every relationship hypothesis, loaded once; undefined links means still loading. */
   links: { links?: EventLink[]; error?: string };
@@ -376,7 +360,7 @@ export default function EventGlobe({ view, headlines, personal, feed, allEvents,
   onSelect: (selection: Selection | null) => void;
   fixture: boolean;
 }) {
-  // Headlines and My Feed share one presentation: pins, ring cards, the briefing and the tour.
+  // Headlines is presented as pins, ring cards, the briefing and the tour.
   const curated = isCurated(view);
   // The native sphere keeps ocean picking and far-side occlusion without painting water.
   const oceanDepthMaterial = useMemo(() => new MeshBasicMaterial({ colorWrite: false }), []);
@@ -1535,34 +1519,15 @@ export default function EventGlobe({ view, headlines, personal, feed, allEvents,
 
   return <div className="earth-stage" ref={stage} style={{ "--connector-width": `${GLOBE.connectorWidthPx}px` } as CSSProperties}>
     {tree && selectedEvent && <DetailsPanel key={selectedEvent.id} panelRef={detailsPanel} event={selectedEvent} fixture={fixture} onClose={closeFocus}
-      personal={personal} position={null} rank={{ place: 0, of: 0 }} onPrev={() => {}} onNext={() => {}} onCenter={() => centerOn(selectedEvent)} />}
+      position={null} rank={{ place: 0, of: 0 }} onPrev={() => {}} onNext={() => {}} onCenter={() => centerOn(selectedEvent)} />}
     {curated && selectedEvent && <DetailsPanel key={selectedEvent.id} panelRef={detailsPanel} event={selectedEvent} fixture={fixture} onClose={clearSelection}
-      personal={personal} reasons={view === "feed" ? headlineEvents.find(item => item.id === selectedEvent.id)?.reasons : undefined}
       position={stopIndex >= 0 ? { index: stopIndex, total: tourStops.length } : null}
       rank={{ place: rankOf(selectedEvent.id, headlineEvents), of: headlineEvents.length }}
       onPrev={() => stepHeadline(-1)} onNext={() => stepHeadline(1)} onCenter={() => centerOn(selectedEvent)} />}
-    {/* My Feed: "For you" (ranked by your profile) or your reading list, under the tabs. */}
-    {view === "feed" && feed && <>
-      <div className="feed-sections" role="tablist" aria-label="My Feed sections" onKeyDown={event => {
-        if (event.key === "ArrowLeft" || event.key === "ArrowRight") feed.onSection(feed.section === "saved" ? "for-you" : "saved");
-      }}>
-        <button role="tab" aria-selected={feed.section === "for-you"} tabIndex={feed.section === "for-you" ? 0 : -1} onClick={() => feed.onSection("for-you")}>For you</button>
-        <button role="tab" aria-selected={feed.section === "saved"} tabIndex={feed.section === "saved" ? 0 : -1} onClick={() => feed.onSection("saved")}>
-          Reading list <span className="feed-count">{feed.saved}</span>
-        </button>
-      </div>
-      {(feed.loading || feed.error || headlineEvents.length === 0) && <p className="feed-status" role="status">
-        {feed.loading ? "Finding stories for you…"
-          : feed.error ? feed.error
-          : feed.section === "saved" ? "Nothing saved yet. Use “Save to reading list” on any story, in any tab."
-          : "Nothing matches your interests yet. Try “More like this” on stories you like."}
-      </p>}
-      <button className="feed-reset" onClick={feed.onStartOver} title="Forget interests, saves and history, and pick interests again">Start over</button>
-    </>}
     {/* The tour sits at the bottom: a quiet "start" pill, then a small control bar. */}
     {curated && tourStops.length > 0 && (tour === "off"
-      ? <button className="tour-start" data-view={view} onClick={startTour}><span aria-hidden="true">▶</span> {view === "feed" ? feed?.section === "saved" ? "Tour my reading list" : "Tour my feed" : "Tour the headlines"}</button>
-      : <div className="tour-bar" role="group" aria-label={view === "feed" ? "My Feed tour" : "Headlines tour"} data-view={view}>
+      ? <button className="tour-start" data-view={view} onClick={startTour}><span aria-hidden="true">▶</span> Tour the headlines</button>
+      : <div className="tour-bar" role="group" aria-label="Headlines tour" data-view={view}>
         <button onClick={() => stepHeadline(-1)} aria-label="Previous headline">‹</button>
         <button onClick={() => setTour(state => state === "playing" ? "paused" : "playing")} aria-label={tour === "playing" ? "Pause tour" : "Resume tour"}>{tour === "playing" ? "❚❚" : "▶"}</button>
         <button onClick={() => stepHeadline(1)} aria-label="Next headline">›</button>
@@ -1628,8 +1593,6 @@ export default function EventGlobe({ view, headlines, personal, feed, allEvents,
       onPick={event => { setOpenCluster(null); toggleEvent(event); }} onClose={() => setOpenCluster(null)} />}
     <div className="callouts" aria-label="Visible points of interest">{callouts.map((item, index) => {
       const event = item.event;
-      const impact = event ? impactLabel(event.attributes) : null;
-      const kind = event ? hazardLabel(event.layerId) : null;
       const expanded = expandedCards.has(item.id);
       const active = event ? event.id === selectedEvent?.id || selectedIds.has(event.id) : true;
       const href = event && sourceHref(event.sourceUrl);
@@ -1643,7 +1606,7 @@ export default function EventGlobe({ view, headlines, personal, feed, allEvents,
             event.preventDefault(); event.stopPropagation();
           }
         }}>
-        {(expanded || kind) && <div className="card-category"><span>{kind ?? (event ? LABELS[event.layerId as LayerId] ?? event.layerId : "location")}</span>{expanded && fixture && event && <span className="sample-badge">Sample</span>}</div>}
+        {expanded && <div className="card-category"><span>{event ? LABELS[event.layerId as LayerId] ?? event.layerId : "location"}</span>{expanded && fixture && event && <span className="sample-badge">Sample</span>}</div>}
         {/* Thumbnail left, headline and freshness right. Without an image the text takes the row. */}
         <div className="card-headline">
         <Thumbnail src={event?.imageUrl} />
@@ -1660,13 +1623,11 @@ export default function EventGlobe({ view, headlines, personal, feed, allEvents,
         {expanded && <>
         {item.retained && <p className="retained-note">Selected event · hidden by map filters</p>}
         {event && <p className="card-summary">{event.summary ?? "No summary provided."}</p>}
-        {impact && <p className="impact-badge">{impact}</p>}
         <p className="card-coordinates">{coordinate(item.lat, true)}<br />{coordinate(item.lng, false)}</p>
         {event && <RelatedEventControls key={event.id} event={event} allEvents={allEvents}
           links={links.links ? linkIndex.get(event.id) ?? [] : undefined} error={links.error} onVisit={visitEvent} />}
-        {event && personal && <StoryActions event={event} personal={personal} />}
         {event && <p className="card-time">{exactTime(event.occurredAt)}</p>}
-        <div className="card-footer">{href ? <a href={href} target="_blank" rel="noreferrer" onClick={() => event && personal?.onSource(event)}>{event!.source.toUpperCase()} ↗</a> : <span>{event?.source.toUpperCase() ?? "Coordinates captured"}</span>}
+        <div className="card-footer">{href ? <a href={href} target="_blank" rel="noreferrer">{event!.source.toUpperCase()} ↗</a> : <span>{event?.source.toUpperCase() ?? "Coordinates captured"}</span>}
           {(event ? event.id === selectedEvent?.id : selection?.kind === "location") && <button onClick={clearSelection}>Close</button>}</div>
         </>}
       </article>;
@@ -1681,7 +1642,7 @@ export default function EventGlobe({ view, headlines, personal, feed, allEvents,
         x={openLink.x} y={openLink.y} stageWidth={openLink.width} stageHeight={openLink.height}
         onVisit={visitEvent} onClose={closeLink} />;
     })()}
-    {/* Explore only: Headlines and My Feed keep the bottom for the tour controls. */}
+    {/* Explore only: Headlines keeps the bottom for the tour controls. */}
     {!curated && <p className="earth-hint">Drag to explore <span>·</span> Scroll to zoom <span>·</span> Click a place</p>}
   </div>;
 }

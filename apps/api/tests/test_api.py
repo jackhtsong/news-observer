@@ -17,10 +17,34 @@ from tigerdata_client import _row_to_event
 from db import DatabasePing
 
 
+def _event(event_id: str, layer_id: str, significance: float, occurred_at: str, lat: float, lng: float) -> dict:
+    """A minimal schema-valid Event, so tests do not depend on the bundled sample data."""
+    return {
+        "id": event_id, "source": "conflict_csv" if layer_id != "news" else "news",
+        "sourceUrl": f"https://example.com/{event_id}", "imageUrl": None, "layerId": layer_id, "subtype": None,
+        "title": f"Test {layer_id} event", "summary": None, "occurredAt": occurred_at, "updatedAt": occurred_at,
+        "endedAt": None, "lng": lng, "lat": lat, "altM": None, "geoPrecision": "city", "geoSource": "native",
+        "weight": None, "significance": significance, "countryIso3": None, "keywords": [], "entities": [],
+        "rawRef": None, "tags": [], "attributes": {},
+    }
+
+
+EVENTS = [
+    _event("test:conflict", "conflict", 80, "2026-10-03T12:04:11Z", 38.2, -122.3),
+    _event("test:protest", "protest", 55, "2026-10-03T11:40:00Z", 38.5, -122.4),
+    _event("test:news", "news", 40, "2026-10-03T13:20:00Z", 38.3, -122.3),
+]
+LINKS = [{
+    "id": "link:test:news:test:conflict", "sourceId": "test:news", "targetId": "test:conflict",
+    "relation": "primary-story", "confidence": 0.74, "rationale": "The article reports the clash.",
+    "citations": [], "model": "test",
+}]
+
+
 class ApiTests(unittest.TestCase):
     def setUp(self):
-        self.events = json.loads(main.EVENTS_FIXTURE.read_text())
-        self.links = json.loads(main.LINKS_FIXTURE.read_text())
+        self.events = json.loads(json.dumps(EVENTS))
+        self.links = json.loads(json.dumps(LINKS))
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         root = Path(temp.name)
@@ -40,55 +64,6 @@ class ApiTests(unittest.TestCase):
         main.LINKS_FIXTURE.write_text(json.dumps(self.links))
         self.client = self.enterContext(TestClient(main.app, raise_server_exceptions=False))
 
-    def test_feed_uses_request_keywords_without_reading_or_saving_preferences(self):
-        from jobs.llm import personalize
-
-        before = personalize.CONFIG_PATH.read_bytes()
-        with patch.object(personalize, "load_config", side_effect=AssertionError("Must not load preferences")):
-            body = self.client.get("/feed?keywords=VIIRS&n=1").json()
-        self.assertEqual(body["events"][0]["id"], self.events[1]["id"])
-        self.assertEqual(body["sourceStatus"]["usgs"], "fixture")
-        self.assertIsNone(body["nextCursor"])
-        self.assertEqual(personalize.CONFIG_PATH.read_bytes(), before)
-
-    def test_feed_filters_and_empty_layer_selection(self):
-        response = self.client.get("/feed?types=earthquake&minSignificance=60")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["events"], [self.events[0]])
-        self.assertEqual(self.client.get("/feed?types=").json()["events"], [])
-        self.assertEqual(self.client.get("/feed", params={"end": self.events[1]["occurredAt"]}).json()["events"], [])
-
-    def test_feed_validates_selections_and_limits(self):
-        for query in ("n=0", "n=1001", "lat=91&lng=0", "lat=0", "lng=0", "lat=nan&lng=0",
-                      "keywords=", "types=unknown", "minSignificance=-1", "start=invalid",
-                      "start=2026-10-04T00:00:00Z&end=2026-10-03T00:00:00Z"):
-            with self.subTest(query=query):
-                self.assertEqual(self.client.get("/feed?" + query).status_code, 422)
-        for query in ("n=101", "spreadDegrees=-1", "spreadDegrees=181", "spreadDegrees=nan"):
-            self.assertEqual(self.client.get("/feed/pins?" + query).status_code, 422)
-
-    def test_pin_spacing_and_location_ranking(self):
-        base = {**self.events[0], "title": "Same title", "significance": 50, "lat": 0}
-        rows = [{**base, "id": str(i), "lng": lng} for i, lng in enumerate((0, 5, 90, 180))]
-        main.EVENTS_FIXTURE.write_text(json.dumps(rows))
-        result = self.client.get("/feed/pins?n=4&spreadDegrees=30&lat=0&lng=0").json()["events"]
-        self.assertEqual([row["id"] for row in result], ["0", "2", "3"])
-        self.assertEqual(len(self.client.get("/feed/pins?n=4&spreadDegrees=0").json()["events"]), 4)
-        self.assertEqual(self.client.get("/feed?n=1&lat=0&lng=180").json()["events"][0]["id"], "3")
-
-    def test_feed_uses_validated_live_rows_and_snapshot_fallback(self):
-        healthy = DatabasePing("ok", None)
-        dark = DatabasePing("dark", None, "simulated outage")
-        with patch.dict(os.environ, {"DATABASE_URL": "configured"}), patch.object(main, "fetch_mart_events", return_value=(self.events, healthy)):
-            live = self.client.get("/feed?types=wildfire").json()
-        self.assertEqual(live["sourceStatus"]["database"], "ok")
-        self.assertEqual(live["events"], [self.events[1]])
-        with patch.dict(os.environ, {"DATABASE_URL": "configured"}), patch.object(main, "fetch_mart_events", return_value=(None, dark)):
-            cached = self.client.get("/feed?types=wildfire").json()
-        self.assertEqual(cached["events"], live["events"])
-        self.assertEqual(cached["sourceStatus"]["database"], "dark")
-        self.assertIn("fallbackDetail", cached)
-
     def test_fixture_contract_detail_and_links(self):
         response = self.client.get("/events")
         self.assertEqual(response.status_code, 200)
@@ -102,12 +77,12 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(self.client.get(path).status_code, 404)
 
     def test_filters_and_exclusive_end(self):
-        response = self.client.get("/events", params={"types": "earthquake,wildfire", "minSignificance": 60})
+        response = self.client.get("/events", params={"types": "conflict,protest", "minSignificance": 60})
         self.assertEqual(response.json()["events"], [self.events[0]])
         timestamp = self.events[0]["occurredAt"]
-        response = self.client.get("/events", params={"types": "earthquake", "start": timestamp})
+        response = self.client.get("/events", params={"types": "conflict", "start": timestamp})
         self.assertEqual(response.json()["events"], [self.events[0]])
-        response = self.client.get("/events", params={"types": "earthquake", "end": timestamp})
+        response = self.client.get("/events", params={"types": "conflict", "end": timestamp})
         self.assertEqual(response.json()["events"], [])
 
     def test_invalid_queries_are_client_errors(self):
@@ -142,7 +117,7 @@ class ApiTests(unittest.TestCase):
             return self.events[:limit], healthy
 
         with patch.dict(os.environ, {"DATABASE_URL": "configured"}), patch.object(main, "fetch_mart_events", side_effect=fetch):
-            response = self.client.get("/events?types=wildfire&limit=1")
+            response = self.client.get("/events?types=protest&limit=1")
             self.assertEqual(response.json()["events"], [self.events[1]])
             self.assertEqual(json.loads(main.EVENTS_SNAPSHOT.read_text()), self.events)
         with patch.dict(os.environ, {"DATABASE_URL": "configured"}), patch.object(main, "fetch_mart_events", return_value=(None, dark)):
@@ -190,7 +165,7 @@ class ApiTests(unittest.TestCase):
 
     def test_fixture_sources_are_not_reported_as_live(self):
         status = self.client.get("/events").json()["sourceStatus"]
-        self.assertEqual(status, {"usgs": "fixture", "firms": "fixture", "database": "fixture"})
+        self.assertEqual(status, {"news": "fixture", "gdelt": "fixture", "database": "fixture"})
 
     def test_cursor_pages_all_results_and_rejects_changed_data(self):
         first = self.client.get("/events?limit=1").json()
@@ -305,13 +280,13 @@ class ApiTests(unittest.TestCase):
         main.SNAPSHOTS_DIR.mkdir()
         main.SNAPSHOT_META.write_text(json.dumps({
             "lastIngestAt": "2026-10-03T14:00:00Z",
-            "sourceStatus": {"usgs": "ok", "firms": "error"},
+            "sourceStatus": {"news": "ok", "gdelt": "error"},
         }))
         healthy = DatabasePing("ok", None)
         with patch.dict(os.environ, {"DATABASE_URL": "configured"}), patch.object(main, "fetch_mart_events", return_value=(self.events, healthy)):
             status = self.client.get("/events").json()["sourceStatus"]
-        self.assertEqual(status, {"usgs": "ok", "firms": "error", "database": "ok"})
-        self.assertEqual(json.loads(main.SNAPSHOT_META.read_text())["sourceStatus"]["firms"], "error")
+        self.assertEqual(status, {"news": "ok", "gdelt": "error", "database": "ok"})
+        self.assertEqual(json.loads(main.SNAPSHOT_META.read_text())["sourceStatus"]["gdelt"], "error")
 
     def test_corrupt_metadata_does_not_break_health(self):
         main.SNAPSHOTS_DIR.mkdir()

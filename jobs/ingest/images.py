@@ -2,10 +2,8 @@
 Find a thumbnail for events that have none, and store it in mart.event.image_url.
 
 Per source:
-  - gnews, conflict_csv, gdacs: the linked page's og:image (or twitter:image) meta tag.
+  - gnews, conflict_csv: the linked page's og:image (or twitter:image) meta tag.
   - wikifeeds: the Wikipedia REST summary thumbnail.
-  - usgs: the ShakeMap shaking-intensity map, published for significant quakes.
-  - firms: skipped; its link is the FIRMS homepage, not an event page.
 Each candidate is requested the way the browser will load it (no Referer, https) and kept
 only if it answers with an image, so the cards never point at a broken thumbnail.
 
@@ -26,7 +24,7 @@ from typing import Callable
 USER_AGENT = "Mozilla/5.0 (compatible; hypothesis-globe/1.0; +https://github.com/tm1944/hypothesis-globe)"
 TIMEOUT = 12
 MAX_PAGE_BYTES = 1_000_000  # og:image lives in <head>; never read whole pages
-SOURCES = ("gnews", "wikifeeds", "conflict_csv", "usgs", "gdacs")
+SOURCES = ("gnews", "wikifeeds", "conflict_csv")
 META_IMAGE = re.compile(
     r"<meta\b[^>]*?(?:property|name)\s*=\s*[\"'](?:og:image(?::secure_url)?|og:image:url|twitter:image(?::src)?)[\"'][^>]*>",
     re.IGNORECASE,
@@ -53,14 +51,6 @@ def wikipedia_thumbnail(page_url: str) -> str | None:
     return (_json(f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{title}").get("thumbnail") or {}).get("source")
 
 
-def usgs_shakemap(event_id: str) -> str | None:
-    """The ShakeMap intensity map for a USGS event id (e.g. us6000tzer), if one was published."""
-    detail = _json(f"https://earthquake.usgs.gov/fdsnws/event/1/query?eventid={urllib.parse.quote(event_id)}&format=geojson")
-    shakemaps = (detail.get("properties") or {}).get("products", {}).get("shakemap") or []
-    contents = shakemaps[0].get("contents", {}) if shakemaps else {}
-    return (contents.get("download/intensity.jpg") or {}).get("url")
-
-
 def page_image(page_url: str) -> str | None:
     with urllib.request.urlopen(_request(page_url, accept="text/html"), timeout=TIMEOUT) as response:
         head = response.read(MAX_PAGE_BYTES).decode(response.headers.get_content_charset() or "utf-8", "replace")
@@ -72,8 +62,6 @@ def page_image(page_url: str) -> str | None:
 
 
 def candidate_image(source: str, source_event_id: str, info_url: str | None) -> str | None:
-    if source == "usgs":
-        return usgs_shakemap(source_event_id)
     if not info_url:
         return None
     if "wikipedia.org/wiki/" in info_url:

@@ -1,9 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { getEvents, getLinks, type Event, type EventLink, type EventsResponse } from "@/lib/api";
-import { getMyFeed, getProfile, resetProfile, setFeedback, setSaved, track, type Feedback, type FeedEvent, type Profile } from "@/lib/profile";
 import countries from "@/data/countries.geojson.json";
 import { eventCountry } from "@/lib/country-selection";
 import type { Selection } from "@/components/event-globe";
@@ -15,7 +13,7 @@ import GlobeBoundary from "@/components/globe-boundary";
 import CountryHeadlines from "@/components/country-headlines";
 import { indexLinks } from "@/lib/related-events";
 import ViewTabs from "@/components/view-tabs";
-import { PRODUCT_NAME, Wordmark } from "@/components/brand";
+import { PRODUCT_NAME } from "@/components/brand";
 import DataAttribution from "@/components/data-attribution";
 import { EyeOfHorusIcon } from "@/components/eye-of-horus";
 
@@ -57,61 +55,6 @@ export default function Home() {
     setTab(next);
   }
 
-  // MY FEED — the demo profile lives in FastAPI. First visit (not onboarded) goes to the
-  // welcome flow; without the API (fixture mode) the app simply runs without personal tools.
-  const router = useRouter();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  useEffect(() => {
-    const controller = new AbortController();
-    getProfile(controller.signal).then(next => {
-      if (!next.onboarded) router.replace("/welcome");
-      else setProfile(next);
-    }).catch(() => { /* no API: no personal features */ });
-    return () => controller.abort();
-  }, [router]);
-  // "For you" is ranked by the taste vector; "Reading list" is what the user saved.
-  const [feedSection, setFeedSection] = useState<"for-you" | "saved">("for-you");
-  const [feed, setFeed] = useState<{ events?: FeedEvent[]; error?: string }>({});
-  const [feedVersion, setFeedVersion] = useState(0);
-  useEffect(() => {
-    if (tab !== "feed" || !profile) return;
-    const controller = new AbortController();
-    // Refetch shortly after a save or thumbs, so the ranking visibly adapts.
-    const timer = setTimeout(() => getMyFeed(feedSection === "saved", controller.signal)
-      .then(body => setFeed({ events: body.events }))
-      .catch((error: unknown) => { if (!controller.signal.aborted) setFeed({ error: error instanceof Error ? error.message : "Unable to load your feed." }); }),
-    feedVersion ? 500 : 0);
-    return () => { clearTimeout(timer); controller.abort(); };
-  }, [tab, feedSection, feedVersion, profile]);
-  const changed = useCallback((next: Profile) => { setProfile(next); setFeedVersion(value => value + 1); }, []);
-  const toggleSaved = useCallback((event: Event, saved: boolean) => {
-    setProfile(current => current && { ...current, readingList: saved ? [...current.readingList.filter(id => id !== event.id), event.id] : current.readingList.filter(id => id !== event.id) });
-    setSaved(event.id, saved, tab).then(changed).catch(() => getProfile().then(setProfile).catch(() => {}));
-  }, [tab, changed]);
-  const giveFeedback = useCallback((event: Event, value: Feedback) => {
-    setProfile(current => {
-      if (!current) return current;
-      const feedback = { ...current.feedback };
-      if (value) feedback[event.id] = value; else delete feedback[event.id];
-      return { ...current, feedback };
-    });
-    setFeedback(event.id, value, tab).then(changed).catch(() => getProfile().then(setProfile).catch(() => {}));
-  }, [tab, changed]);
-  // Opening an item is a light signal, counted once per item per visit.
-  const opened = useRef(new Set<string>());
-  useEffect(() => {
-    if (!profile || selection?.kind !== "event" || opened.current.has(selection.event.id)) return;
-    opened.current.add(selection.event.id);
-    track(selection.event.id, "open", tab);
-  }, [selection, profile, tab]);
-  const startOver = useCallback(() => { resetProfile().then(() => router.replace("/welcome")).catch(() => {}); }, [router]);
-  const personal = useMemo(() => profile ? {
-    isSaved: (id: string) => profile.readingList.includes(id),
-    feedbackFor: (id: string): Feedback => profile.feedback[id] ?? null,
-    onSave: toggleSaved, onFeedback: giveFeedback,
-    onSource: (event: Event) => track(event.id, "source", tab),
-  } : null, [profile, toggleSaved, giveFeedback, tab]);
-  const feedEvents = feed.events ?? emptyEvents;
   // Each event's country, decided once per load the same way everywhere (lib/country-selection.ts).
   const eventCountries = useMemo(() => new Map((result?.data.events ?? emptyEvents).map(event => [event.id, eventCountry(countries.features, event)?.id])), [result]);
   const selectedCountries = useMemo(() => selectedCountryIds.map(id => {
@@ -143,7 +86,6 @@ export default function Home() {
   const shown = useMemo(() => explore && selectedCountries.length
     ? restrictVisuals(visuals, new Set(selectedCountries.flatMap(country => country.events.map(event => event.id))))
     : visuals, [explore, selectedCountries, visuals]);
-<<<<<<< HEAD
   return <main className="earth-page" data-tab={tab} aria-label={PRODUCT_NAME}>
     {explore && <LayerRail filters={filters} onChange={update} reflowKey={[filters, selectedCountries]} openRequest={countriesPanelRequest} closeRequest={settingsCloseRequest} panels={[
       { id: "countries", label: "Selected countries", badge: selectedCountries.length, active: selectedCountries.length > 0, content: <CountryHeadlines countries={selectedCountries}
@@ -151,8 +93,8 @@ export default function Home() {
         include={event => !!filters.layers[event.layerId as LayerId]?.enabled} linkCount={id => linkIndex.get(id)?.length ?? 0} /> },
       { id: "significance", label: "Significance", content: <DisplaySettings filters={filters} onChange={update} count={visuals.visible.length} markerCount={visuals.markers.length} markerCandidateCount={visuals.markerCandidateCount} /> },
     ]} />}
-    <div className="globe-workspace"><ViewTabs tab={tab} onChange={changeTab} /><div className="globe-brand" role="img" aria-label="Eye of Horus" title="Eye of Horus"><EyeOfHorusIcon /></div><GlobeBoundary><EventGlobe view={tab} headlines={tab === "feed" ? feedEvents : headlines} personal={personal}
-      feed={tab === "feed" ? { section: feedSection, onSection: section => { setFeed({}); setSelection(null); setFeedSection(section); }, saved: profile?.readingList.length ?? 0, loading: !feed.events && !feed.error, error: feed.error, onStartOver: startOver } : null} allEvents={result?.data.events ?? emptyEvents} links={links} selectedCountries={explore ? selectedCountries : noCountries} onToggleCountry={toggleCountry} events={shown.markers} linkable={visuals.visible} heatmaps={shown.heatmaps} selection={selection} fixture={result?.mode === "fixture"} onSelect={setSelection} /></GlobeBoundary><DataAttribution /></div>
+    <div className="globe-workspace"><ViewTabs tab={tab} onChange={changeTab} /><div className="globe-brand" role="img" aria-label="Eye of Horus" title="Eye of Horus"><EyeOfHorusIcon /></div><GlobeBoundary><EventGlobe view={tab} headlines={headlines}
+      allEvents={result?.data.events ?? emptyEvents} links={links} selectedCountries={explore ? selectedCountries : noCountries} onToggleCountry={toggleCountry} events={shown.markers} linkable={visuals.visible} heatmaps={shown.heatmaps} selection={selection} fixture={result?.mode === "fixture"} onSelect={setSelection} /></GlobeBoundary><DataAttribution /></div>
     {error && <div className="data-error" role="alert">{error} The globe is still interactive. <button onClick={() => { setError(null); setAttempt((value) => value + 1); }}>Retry</button></div>}
   </main>;
 }

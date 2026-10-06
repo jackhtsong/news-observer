@@ -4,19 +4,14 @@ import type { Event } from "@/lib/api";
 import { CATEGORY_OF, LABELS, type LayerId } from "@/lib/layers";
 import { eventColor } from "@/lib/globe-config";
 import { exactTime } from "@/lib/freshness";
-import { chips, impactLabel, locatorPaths, placeLabel, satelliteImage, vitalSigns, type ChipKind } from "@/lib/briefing";
+import { chips, locatorPaths, placeLabel, vitalSigns, type ChipKind } from "@/lib/briefing";
 import { eventCountry } from "@/lib/country-selection";
 import countries from "@/data/countries.geojson.json";
 import { Thumbnail, TimeAgo } from "@/components/event-media";
 import RailIcon from "@/components/icons";
-import StoryActions, { type Personal } from "@/components/story-actions";
 
 type Props = {
   event: Event;
-  /** Save and More/Less like this; null without the profile API. */
-  personal: Personal | null;
-  /** My Feed: why this story was picked. */
-  reasons?: string[];
   fixture: boolean;
   /** Position in the tour order (north to south); null hides the stepper. */
   position: { index: number; total: number } | null;
@@ -64,13 +59,11 @@ function Locator({ lat, lng, color }: { lat: number; lng: number; color: string 
  * signs, why it ranks, the lede, where it is, who is involved, then one way out to the source.
  * Headlines shows no relationships, so there is no related-events list here.
  */
-export default function DetailsPanel({ event, personal, reasons, fixture, position, rank, onPrev, onNext, onCenter, onClose, panelRef }: Props) {
+export default function DetailsPanel({ event, fixture, position, rank, onPrev, onNext, onCenter, onClose, panelRef }: Props) {
   const [fullLede, setFullLede] = useState(false);
   const color = eventColor(event.layerId);
   const category = CATEGORY_OF.get(event.layerId as LayerId);
   const vitals = vitalSigns(event);
-  const impact = impactLabel(event.attributes);
-  const satellite = useMemo(() => satelliteImage(event), [event]);
   const people = chips(event);
   const country = useMemo(() => eventCountry(countries.features as CountryFeature[], event), [event]);
   const place = placeLabel(event) ?? (country ? country.properties.name : null);
@@ -101,28 +94,11 @@ export default function DetailsPanel({ event, personal, reasons, fixture, positi
       </div>
     </header>
 
-    {personal && <section className="briefing-section briefing-actions"><StoryActions event={event} personal={personal} /></section>}
-
-    {reasons && reasons.length > 0 && <section className="briefing-section" aria-label="Why it is in your feed">
-      <span className="briefing-label">Why it&apos;s in your feed</span>
-      <ul className="briefing-reasons">{reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>
-    </section>}
-
     {vitals.length > 0 && <dl className="briefing-vitals">
-      {vitals.map(vital => <div key={vital.label} data-tone={vital.tone}>
+      {vitals.map(vital => <div key={vital.label}>
         <dt>{vital.label}</dt><dd>{vital.value}</dd>
       </div>)}
     </dl>}
-
-    {impact && <p className="impact-badge">{impact}</p>}
-
-    {satellite && <section className="briefing-section briefing-satellite" aria-label="Satellite view">
-      <span className="briefing-label">Satellite view</span>
-      <Thumbnail src={satellite.src} className="briefing-satellite-image" />
-      <p className="briefing-satellite-caption">
-        NASA GIBS · VIIRS true color{satellite.fires ? " + active fires" : ""} · {new Date(`${satellite.date}T00:00:00Z`).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}
-      </p>
-    </section>}
 
     <section className="briefing-section briefing-rank" aria-label="Why it is a headline">
       <span className="briefing-label">Significance</span>
@@ -156,7 +132,7 @@ export default function DetailsPanel({ event, personal, reasons, fixture, positi
     <footer className="briefing-footer">
       <p>{exactTime(event.occurredAt)}</p>
       {link
-        ? <a className="briefing-cta" href={link.href} target="_blank" rel="noreferrer" onClick={() => personal?.onSource(event)}>Read the full story at {link.host} <span aria-hidden="true">↗</span></a>
+        ? <a className="briefing-cta" href={link.href} target="_blank" rel="noreferrer">Read the full story at {link.host} <span aria-hidden="true">↗</span></a>
         : <p className="briefing-source">Source: {event.source.toUpperCase()}</p>}
     </footer>
   </aside>;

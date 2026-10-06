@@ -52,8 +52,6 @@
       "type": "string",
       "description": "category",
       "enum": [
-        "earthquake",
-        "wildfire",
         "conflict",
         "politics",
         "terror",
@@ -75,10 +73,6 @@
         "food",
         "education",
         "media",
-        "cyclone",
-        "flood",
-        "volcano",
-        "drought",
         "famine",
         "protest",
         "strategic_development"
@@ -95,13 +89,13 @@
     "altM": { "type": ["number", "null"], "description": "alt_m" },
     "geoPrecision": { "type": "string", "description": "geo_precision, e.g. point, city, region, country, continent" },
     "geoSource": { "type": "string", "description": "geo_source, e.g. native, gemini" },
-    "weight": { "type": ["number", "null"], "description": "Source-specific magnitude (FRP, alert score, fatalities); null for news" },
+    "weight": { "type": ["number", "null"], "description": "Source-specific magnitude (GDELT article count); null for news" },
     "significance": { "type": "number" },
     "countryIso3": { "type": ["string", "null"], "description": "country_iso3" },
     "keywords": {
       "type": "array",
       "items": { "$ref": "#/$defs/term" },
-      "description": "AI-extracted keywords (news, USGS)"
+      "description": "AI-extracted keywords (news)"
     },
     "entities": {
       "type": "array",
@@ -110,6 +104,6 @@
     },
     "rawRef": { "type": ["string", "null"], "description": "raw_ref" },
     "tags": { "type": "array", "items": { "type": "string" }, "description": "mart.event_tag rows" },
-    "attributes": { "type": "object", "description": "Category table row (mart.earthquake, mart.wildfire, ...)" }
+    "attributes": { "type": "object", "description": "Category table row (mart.conflict, mart.protest, ...)" }
   }
 }
