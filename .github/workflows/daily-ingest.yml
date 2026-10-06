@@ -1,0 +1,67 @@
+name: Daily ingest
+
+# Once a day: fetch the news feeds and GDELT, enrich and link the stories with Gemini, and
+# drop data older than 90 days. Needs the repository secrets NEON_CONNECTION_STRING and
+# GEMINI_API, passed to the jobs as DATABASE_URL and GOOGLE_API_KEY. Run it by hand from the
+# Actions tab with "Run workflow".
+on:
+  schedule:
+    - cron: "15 6 * * *"  # 06:15 UTC, after GDELT publishes the previous day's file
+  workflow_dispatch:
+
+concurrency:
+  group: daily-ingest
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      DATABASE_URL: ${{ secrets.NEON_CONNECTION_STRING }}
+      GOOGLE_API_KEY: ${{ secrets.GEMINI_API }}
+      ACLED_ACCESS_TOKEN: ${{ secrets.ACLED_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            apps/api/requirements.txt
+            jobs/ingest/requirements.txt
+            jobs/llm/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r apps/api/requirements.txt -r jobs/ingest/requirements.txt -r jobs/llm/requirements.txt
+
+      - name: Check secrets
+        run: |
+          test -n "$DATABASE_URL" || { echo "::error::Add the NEON_CONNECTION_STRING repository secret"; exit 1; }
+          test -n "$GOOGLE_API_KEY" || { echo "::error::Add the GEMINI_API repository secret"; exit 1; }
+
+      - name: Apply schema (idempotent)
+        run: python -m jobs.ingest.apply_schema
+
+      - name: Fetch news feeds
+        run: python -m jobs.ingest.rss
+
+      - name: Enrich news with Gemini
+        run: python -m jobs.news.enrich
+
+      - name: Load GDELT conflict events
+        run: python -m jobs.ingest
+
+      - name: Fill missing thumbnails
+        run: python -m jobs.ingest.backfill_images --limit 200
+
+      - name: Link related stories
+        run: python -m jobs.llm.link_events
+
+      - name: Drop data older than 90 days
+        if: always()
+        run: python -m jobs.ingest.prune --days 90

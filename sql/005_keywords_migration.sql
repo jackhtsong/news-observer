@@ -6,24 +6,32 @@
 --
 -- Context:
 --   - News events will have populated keywords arrays
---   - Disasters will have empty arrays (no enrichment needed)
---   - All disaster data is in structured fields (category, magnitude, etc.)
+--   - Conflict events keep empty keywords; their actors are in entities
 
--- Check if column exists before renaming
+-- Older databases had only `entities`; it is renamed. When keywords already exists (a fresh
+-- database from sql/001_init.sql, or a re-run), nothing changes: entities stays for conflict
+-- actors (sql/003_acled.sql).
 DO $$
 BEGIN
-    -- If entities column exists, rename it to keywords
-    IF EXISTS (
+    IF NOT EXISTS (
         SELECT 1
         FROM information_schema.columns
         WHERE table_schema = 'mart'
           AND table_name = 'event'
-          AND column_name = 'entities'
+          AND column_name = 'keywords'
     ) THEN
-        ALTER TABLE mart.event RENAME COLUMN entities TO keywords;
-        RAISE NOTICE 'Renamed entities → keywords';
-    ELSE
-        RAISE NOTICE 'Column entities does not exist (already renamed or never existed)';
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'mart'
+              AND table_name = 'event'
+              AND column_name = 'entities'
+        ) THEN
+            ALTER TABLE mart.event RENAME COLUMN entities TO keywords;
+            RAISE NOTICE 'Renamed entities → keywords';
+        ELSE
+            ALTER TABLE mart.event ADD COLUMN keywords jsonb NOT NULL DEFAULT '[]'::jsonb;
+        END IF;
     END IF;
 
     -- Verify keywords column exists
@@ -40,4 +48,4 @@ END $$;
 
 -- Update column comment
 COMMENT ON COLUMN mart.event.keywords IS
-  'Searchable keywords/tags extracted from event data. Populated for news events (topics, entities, concepts). Empty for disasters (use structured fields instead).';
+  'Searchable keywords/tags extracted from event data. Populated for news events (topics, entities, concepts). Empty for conflict events (actors are in entities).';

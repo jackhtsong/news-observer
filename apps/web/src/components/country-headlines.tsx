@@ -6,6 +6,7 @@ import { LABELS, type LayerId } from "@/lib/layers";
 import { eventColor } from "@/lib/globe-config";
 import { Thumbnail, TimeAgo } from "@/components/event-media";
 import { countryHeadlines } from "@/lib/country-selection";
+import { sourceLabel } from "@/lib/sources";
 
 type SelectedCountry = { id: string; name: string; events: Event[] };
 type Props = {
@@ -41,7 +42,7 @@ export default function CountryHeadlines({ countries, onRemove, onClear, onPick,
             <span className="summary-card-text">
               <span className="summary-card-title">{event.title}</span>
               <span className="summary-card-meta">
-                {LABELS[event.layerId as LayerId] ?? event.layerId}{countries.length > 1 ? ` · ${country}` : ""} · {event.source.toUpperCase()} · <TimeAgo iso={event.occurredAt} className="" /> · {Math.round(event.significance)}
+                {LABELS[event.layerId as LayerId] ?? event.layerId}{countries.length > 1 ? ` · ${country}` : ""} · {sourceLabel(event.source)} · <TimeAgo iso={event.occurredAt} className="" /> · {Math.round(event.significance)}
                 {links > 0 && <strong> · {links} related</strong>}
               </span>
             </span>

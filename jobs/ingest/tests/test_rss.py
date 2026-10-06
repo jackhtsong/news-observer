@@ -1,4 +1,4 @@
-"""RSS ingest helpers: URL canonicalisation, junk rules, fair per-country picking."""
+"""RSS ingest helpers: URL canonicalisation, junk rules, fair picking across outlets."""
 
 import sys
 import unittest

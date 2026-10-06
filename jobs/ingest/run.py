@@ -1,7 +1,9 @@
-"""Load conflict events (ACLED when configured, and the GDELT conflict CSV) into Postgres.
+"""Load conflict events into Postgres: yesterday's GDELT events, and ACLED when configured.
 
-ACLED runs only when its credentials are set in .env. Apply the schema first:
-python -m jobs.ingest.apply_schema
+GDELT comes from jobs.ingest.gdelt (one daily file, no key). If that download fails, the
+bundled data/backup_csvs/finalconflictCSV.csv is loaded instead, so a fresh database still
+has conflict events. ACLED runs only when its credentials are set in .env. Apply the schema
+first: python -m jobs.ingest.apply_schema
 """
 
 from __future__ import annotations
@@ -546,14 +548,16 @@ def read_conflict_csv(path: Path | None = None) -> list[dict]:
         return list(csv.DictReader(handle))
 
 
-def load_conflict_csv(cur, rows: list[dict] | None = None) -> dict:
+def load_conflict_csv(cur, rows: list[dict] | None = None, origin: str | None = None) -> dict:
+    """Upsert conflict rows (finalconflictCSV.csv shape). `origin` names where they came from."""
     if rows is None:
         if not CONFLICT_CSV_PATH.is_file():
             return {"source": "conflict_csv", "status": "skipped", "detail": "finalconflictCSV.csv is missing"}
         rows = read_conflict_csv()
+        origin = CONFLICT_CSV_PATH.name
     prepared = [item for item in (prepare_conflict_csv_row(row) for row in rows) if item]
     counts = {category: 0 for category in sorted(CONFLICT_CSV_CATEGORIES)}
-    batch_id = _record_batch(cur, "conflict_csv", {"file": CONFLICT_CSV_PATH.name, "kept": len(prepared)})
+    batch_id = _record_batch(cur, "conflict_csv", {"origin": origin or "rows", "kept": len(prepared)})
     for item in prepared:
         event_id = item["event_id"]
         cur.execute(
@@ -592,7 +596,7 @@ def load_conflict_csv(cur, rows: list[dict] | None = None) -> dict:
                 (event_id, tag, tag_kind),
             )
         counts[item["category"]] += 1
-    return {"source": "conflict_csv", "status": "ok", "events": len(prepared), **counts}
+    return {"source": "conflict_csv", "status": "ok", "origin": origin or "rows", "events": len(prepared), **counts}
 
 
 def run_ingest() -> dict:
@@ -605,8 +609,15 @@ def run_ingest() -> dict:
         }
     import psycopg
 
+    from jobs.ingest import gdelt
+
     acled_rows, acled_window, acled_problem = _fetch_acled_rows()
     summary = []
+    try:
+        gdelt_day, gdelt_rows = gdelt.daily_rows()
+        gdelt_problem = None if gdelt_rows else "no usable events"
+    except Exception as exc:  # noqa: BLE001 — network or format trouble: fall back to the bundled CSV
+        gdelt_day, gdelt_rows, gdelt_problem = None, [], f"{type(exc).__name__}: {str(exc)[:160]}"
     conn = psycopg.connect(database_url(), connect_timeout=20)
     try:
         if acled_problem:
@@ -617,7 +628,11 @@ def run_ingest() -> dict:
                     summary.append(load_acled(cur, acled_rows or [], acled_window or {}))
         with conn.transaction():
             with conn.cursor() as cur:
-                summary.append(load_conflict_csv(cur))
+                if gdelt_problem:
+                    summary.append({"source": "gdelt", "status": "error", "detail": gdelt_problem})
+                    summary.append(load_conflict_csv(cur))  # bundled fallback
+                else:
+                    summary.append(load_conflict_csv(cur, gdelt_rows, origin=f"gdelt:{gdelt_day}"))
         # Thumbnails last, outside the loaders' transactions: only rows still without an
         # image are looked up, so repeat runs are cheap. A failure here never fails ingest.
         try:

@@ -1,5 +1,11 @@
 # Event Linking Architecture
 
+> **Partly historical.** News↔disaster linking (`jobs/llm/link_disasters.py`) and the natural
+> hazard layers were removed. `jobs/llm/link_events.py` now links news stories to each other
+> only, compares each new story once with at most six candidates from the last three days, and
+> stops at a daily call budget. See [jobs/README.md](../jobs/README.md). The two-stage
+> hypothesis-and-verification design below still describes how each pair is judged.
+
 **System:** Hypothesis Globe Event Knowledge Graph  
 **Version:** 1.0  
 **Last Updated:** 2026-10-04

@@ -2,19 +2,22 @@
 
 ## Project structure and module organization
 
-`README.md` defines the MVP and issue priorities. Read `docs/architecture.md`
-before changing API contracts, data flow, or map behavior. Read
-`docs/business-model.md` when changing product scope or demo messaging.
+`README.md` describes the product, data flow, setup, and deployment. Read
+`apps/api/README.md` before changing API contracts and `jobs/README.md` before
+changing the data jobs. `docs/architecture.md` and `docs/business-model.md` are
+the original hackathon briefs, kept as history.
 
-- `apps/api/` contains Track C's FastAPI app, optional TigerData adapter, and tests.
-- `packages/schema/` holds the shared Event and EventLink JSON schemas.
-- `data/fixtures/` contains bundled events and links. `data/snapshots/` holds
-  generated fallback data; runtime JSON files are ignored by Git.
+- `apps/api/` contains the read-only FastAPI app and its tests. `server.py`,
+  `pyproject.toml`, and `vercel.json` at the root deploy it on Vercel.
 - `apps/web/` contains the Next.js globe and same-origin API proxy.
-- `jobs/ingest/`, `jobs/llm/`, `sql/`, and `eval/` remain planned.
-
-Follow the track assignments in issue #21. Track C owns #2 and #9; coordinate
-loader, warehouse, and generated-link handoffs with their owners.
+- `jobs/` contains the daily data jobs: RSS news (`jobs/ingest/rss.py`,
+  `jobs/news/`), GDELT conflict events (`jobs/ingest/gdelt.py`, `run.py`),
+  Gemini story linking (`jobs/llm/`), and cleanup (`jobs/ingest/prune.py`).
+- `sql/` holds the Postgres migrations; `jobs/ingest/apply_schema.py` applies them.
+- `packages/schema/` holds the shared Event and EventLink JSON schemas.
+- `data/fixtures/` contains bundled sample events and links. `data/snapshots/`
+  holds generated fallback data; runtime JSON files are ignored by Git.
+- `.github/workflows/` runs the tests on every push and the jobs once a day.
 
 ## Build, test, and development commands
 
@@ -44,9 +47,11 @@ No formatter or linter is configured. Keep Markdown links relative within docs.
 ## Testing guidelines
 
 Use standard-library `unittest` and FastAPI `TestClient`. Name files `test_*.py`
-under `apps/api/tests/`. Tests must isolate caches in temporary directories and
-simulate warehouse failures without credentials. Cover filters, schema
-compatibility, fallback behavior, and authorization when changing those paths.
+under `apps/api/tests/` or the job's `tests/` folder. Tests must isolate caches in
+temporary directories, simulate database failures without credentials, and make
+no network calls. Cover filters, schema compatibility, and fallback behavior when
+changing those paths. Run job tests from the root, for example
+`python -m unittest discover -s jobs/ingest/tests -t .`.
 There is no coverage threshold. Distinguish simulated checks from live-service
 validation in PRs.
 
@@ -59,7 +64,9 @@ changes explicitly.
 
 ## Architecture and configuration
 
-Keep FastAPI as the browser-facing API; access TigerData and Gemini server-side.
-Preserve fallback data, keep credentials out of commits, and retain source
-attribution. Report unknown feed health honestly. `/ingest/run` executes only
-the server-configured `INGEST_COMMAND`; coordinate its loader with Track B.
+Keep FastAPI as the browser-facing API; access Postgres (Neon) and Gemini
+server-side only. Preserve fallback data, keep credentials out of commits, and
+retain source attribution: list every data source in the README credits and in
+`apps/web/src/components/data-attribution.tsx`. Report unknown feed health
+honestly. Keep the daily jobs within free tiers (Gemini call budgets, Neon's
+0.5 GB via the 90-day cleanup).

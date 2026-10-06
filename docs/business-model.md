@@ -1,5 +1,10 @@
 # Global events globe. Business model and hackathon brief
 
+> **Historical document.** This is the original hackathon brief. Its disaster-awareness
+> positioning, data vendors, and cost assumptions no longer match the product: the globe now
+> covers world news from BBC, Guardian, and Al Jazeera plus GDELT conflict events, and runs on
+> free tiers (Neon, Vercel, GitHub Actions, Gemini). See the [README](../README.md).
+
 Operator constraint. The team has free Google API access and a TigerData database. Do not drop TigerData or Google Maps or Gemini to save money. Challenge those vendors only when they hurt weekend speed, live-demo reliability, licensing, or product quality.
 
 Later paid path. When credits end, keep the same event schema and move the warehouse bill and the Google Maps or Gemini bill onto a paid project. Do not redesign the product around cost.

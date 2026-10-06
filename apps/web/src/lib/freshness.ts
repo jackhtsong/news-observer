@@ -1,6 +1,6 @@
 /**
- * How fresh an event is, for card labels. Sources that only know the date (Wikifeeds,
- * conflict CSV, some GDACS) are stored at exactly 00:00:00 UTC; "15 h ago" would be
+ * How fresh an event is, for card labels. Sources that only know the date (GDELT conflict
+ * events) are stored at exactly 00:00:00 UTC; "15 h ago" would be
  * invented precision for those, so they read as a day instead.
  */
 const DAY = 86_400_000;

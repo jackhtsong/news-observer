@@ -2,7 +2,7 @@
 Backfill mart.event.image_url for events that have no thumbnail yet (see images.py for
 how each source finds one). Safe to re-run: only rows without an image are tried.
 
-Run:  python -m jobs.ingest.backfill_images [--dry-run] [--limit N] [--sources gnews,conflict_csv]
+Run:  python -m jobs.ingest.backfill_images [--dry-run] [--limit N] [--sources aljazeera,conflict_csv]
 """
 
 from __future__ import annotations

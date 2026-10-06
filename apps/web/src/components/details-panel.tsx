@@ -9,6 +9,7 @@ import { eventCountry } from "@/lib/country-selection";
 import countries from "@/data/countries.geojson.json";
 import { Thumbnail, TimeAgo } from "@/components/event-media";
 import RailIcon from "@/components/icons";
+import { sourceLabel } from "@/lib/sources";
 
 type Props = {
   event: Event;
@@ -86,7 +87,7 @@ export default function DetailsPanel({ event, fixture, position, rank, onPrev, o
       <div className="briefing-hero-text">
         <p className="briefing-chips">
           <span className="briefing-chip" style={{ background: color }}>{LABELS[event.layerId as LayerId] ?? event.layerId}</span>
-          <span>{event.source.toUpperCase()}</span>
+          <span>{sourceLabel(event.source)}</span>
           <TimeAgo iso={event.occurredAt} className="" />
           {fixture && <span className="sample-badge">Sample</span>}
         </p>
@@ -133,7 +134,7 @@ export default function DetailsPanel({ event, fixture, position, rank, onPrev, o
       <p>{exactTime(event.occurredAt)}</p>
       {link
         ? <a className="briefing-cta" href={link.href} target="_blank" rel="noreferrer">Read the full story at {link.host} <span aria-hidden="true">↗</span></a>
-        : <p className="briefing-source">Source: {event.source.toUpperCase()}</p>}
+        : <p className="briefing-source">Source: {sourceLabel(event.source)}</p>}
     </footer>
   </aside>;
 }

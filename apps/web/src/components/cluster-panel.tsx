@@ -5,6 +5,7 @@ import type { Event } from "@/lib/api";
 import { LABELS, type LayerId } from "@/lib/layers";
 import { eventColor } from "@/lib/globe-config";
 import { Thumbnail, TimeAgo } from "@/components/event-media";
+import { sourceLabel } from "@/lib/sources";
 
 type Props = {
   events: Event[];
@@ -40,7 +41,7 @@ export default function ClusterPanel({ events, linkCount, x, y, stageWidth, stag
             <span className="summary-card-text">
               <span className="summary-card-title">{event.title}</span>
               <span className="summary-card-meta">
-                {LABELS[event.layerId as LayerId] ?? event.layerId} · {event.source.toUpperCase()} · <TimeAgo iso={event.occurredAt} className="" />
+                {LABELS[event.layerId as LayerId] ?? event.layerId} · {sourceLabel(event.source)} · <TimeAgo iso={event.occurredAt} className="" />
                 {links > 0 && <strong> · {links} related</strong>}
               </span>
             </span>

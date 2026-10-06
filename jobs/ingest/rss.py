@@ -1,16 +1,17 @@
 """
-Fetch local news from the publisher directory's RSS feeds into raw.feed_item.
+Fetch the news outlets' RSS feeds (jobs/news/sources.py) into raw.feed_item.
 
-For each approved feed that is due (poll_minutes since last fetch, unless --force):
+First registers the outlets (jobs.news.sources.sync). Then, for each approved feed that is
+due (poll_minutes since last fetch, unless --force):
   1. Conditional GET (ETag / Last-Modified); unchanged feeds cost one cheap request.
   2. Parse with feedparser; normalise URL (tracking params stripped), title, summary,
      image, publish time and language.
   3. Prefilter without AI: last --hours only, obvious non-news dropped, items already
-     seen skipped, at most --cap newest new items per country per run.
-  4. Store survivors as status 'pending'. Enrichment (summary, geocode, category, and the
-     locality check) runs separately and promotes them into mart.event.
+     seen skipped, at most --cap newest new items per outlet per run.
+  4. Store survivors as status 'pending'. Enrichment (jobs.news.enrich: summary, geocode,
+     category) runs separately and promotes them into mart.event.
 
-Run:  python -m jobs.ingest.rss [--dry-run] [--force] [--hours 48] [--cap 30] [--countries GBR,IND]
+Run:  python -m jobs.ingest.rss [--dry-run] [--force] [--hours 48] [--cap 40]
 """
 
 from __future__ import annotations
@@ -37,8 +38,9 @@ if str(API_DIR) not in sys.path:
 import feedparser  # noqa: E402
 
 from db import database_configured, database_url, load_repo_env  # noqa: E402
+from jobs.news import sources  # noqa: E402
 
-USER_AGENT = "Mozilla/5.0 (compatible; hypothesis-globe/1.0; +https://github.com/tm1944/hypothesis-globe)"
+USER_AGENT = "Mozilla/5.0 (compatible; eye-of-horus/1.0; +https://github.com/tm1944/eye-of-horus)"
 TIMEOUT = 15
 MAX_ERRORS = 5  # a feed failing this many times in a row is skipped until reset
 SUMMARY_CHARS = 600
@@ -141,9 +143,9 @@ def items_from(feed: dict, parsed, since: datetime, now: datetime) -> tuple[list
 
 def fair_pick(items: list[dict], cap: int) -> list[dict]:
     """
-    Up to `cap` items for one country, shared round-robin across its publishers (each
-    publisher's newest first), so one prolific outlet cannot fill the country. Undated items
-    rank after dated ones: their recency is unknown.
+    Up to `cap` items, shared round-robin across publishers (each publisher's newest first),
+    so one prolific outlet cannot fill the slots. Undated items rank after dated ones: their
+    recency is unknown.
     """
     by_publisher: dict[str, list[dict]] = defaultdict(list)
     for item in items:
@@ -161,12 +163,11 @@ def fair_pick(items: list[dict], cap: int) -> list[dict]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Fetch local news RSS feeds into raw.feed_item")
+    parser = argparse.ArgumentParser(description="Fetch the news outlets' RSS feeds into raw.feed_item")
     parser.add_argument("--dry-run", action="store_true", help="Fetch and report; write nothing")
     parser.add_argument("--force", action="store_true", help="Fetch every feed, ignoring poll_minutes")
     parser.add_argument("--hours", type=int, default=48, help="Only keep items published this recently")
-    parser.add_argument("--cap", type=int, default=30, help="New items kept per country per run")
-    parser.add_argument("--countries", default="", help="Comma-separated ISO3 codes (default: all)")
+    parser.add_argument("--cap", type=int, default=40, help="New items kept per outlet per run")
     args = parser.parse_args()
 
     load_repo_env()
@@ -176,13 +177,14 @@ def main() -> None:
 
     now = datetime.now(timezone.utc)
     since = now - timedelta(hours=args.hours)
-    countries = [code.strip().upper() for code in args.countries.split(",") if code.strip()]
     with psycopg.connect(database_url(), connect_timeout=20) as conn:
+        if not args.dry_run:
+            sources.sync(conn)
         rows = conn.execute("""
             SELECT f.feed_url, f.publisher_id, p.country_iso3, f.etag, f.last_modified, f.last_fetched_at, f.poll_minutes
             FROM mart.feed f JOIN mart.publisher p USING (publisher_id)
-            WHERE p.status = 'approved' AND f.error_count < %s AND (cardinality(%s::text[]) = 0 OR p.country_iso3 = ANY(%s))
-        """, (MAX_ERRORS, countries, countries)).fetchall()
+            WHERE p.status = 'approved' AND f.error_count < %s
+        """, (MAX_ERRORS,)).fetchall()
         feeds = [dict(zip(("feed_url", "publisher_id", "country_iso3", "etag", "last_modified", "last_fetched_at", "poll_minutes"), row)) for row in rows]
         due = [f for f in feeds if args.force or not f["last_fetched_at"] or now - f["last_fetched_at"] >= timedelta(minutes=f["poll_minutes"])]
         print(f"{len(due)} of {len(feeds)} feeds due")
@@ -198,29 +200,29 @@ def main() -> None:
             if result.get("parsed") is not None:
                 items, reasons = items_from(feed, result["parsed"], since, now)
                 dropped.update(reasons)
-                candidates[feed["country_iso3"]].extend(items)
+                candidates[feed["publisher_id"]].extend(items)
 
-        # Skip items already stored, then keep --cap per country, shared fairly across outlets.
+        # Skip items already stored, then keep the newest --cap per outlet.
         all_ids = [item["item_id"] for items in candidates.values() for item in items]
         known = {row[0] for row in conn.execute("SELECT item_id FROM raw.feed_item WHERE item_id = ANY(%s)", (all_ids,))} if all_ids else set()
         keep: dict[str, list[dict]] = {}
-        for iso3, items in candidates.items():
+        for publisher, items in candidates.items():
             unique = {item["item_id"]: item for item in items if item["item_id"] not in known}
             if len(unique) < len({i["item_id"] for i in items}):
                 dropped["already stored"] += len({i["item_id"] for i in items}) - len(unique)
-            keep[iso3] = fair_pick(list(unique.values()), args.cap)
-            dropped["over country cap"] += len(unique) - len(keep[iso3])
+            keep[publisher] = fair_pick(list(unique.values()), args.cap)
+            dropped["over outlet cap"] += len(unique) - len(keep[publisher])
 
         print(f"feeds: {dict(statuses)}")
         print(f"dropped: {dict(dropped)}")
-        for iso3 in sorted(keep, key=lambda code: -len(keep[code])):
-            print(f"  {iso3}: {len(keep[iso3])} new items")
+        for publisher in sorted(keep, key=lambda key: -len(keep[key])):
+            print(f"  {publisher}: {len(keep[publisher])} new items")
         if args.dry_run:
             return
 
         for feed, result in zip(due, results):
             ok = result["status"] in ("ok", "not_modified")
-            latest = max((item["published_at"] for item in keep.get(feed["country_iso3"], []) if item["feed_url"] == feed["feed_url"] and item["published_at"]), default=None)
+            latest = max((item["published_at"] for item in keep.get(feed["publisher_id"], []) if item["feed_url"] == feed["feed_url"] and item["published_at"]), default=None)
             conn.execute("""
                 UPDATE mart.feed SET last_fetched_at = %s, last_status = %s,
                   etag = COALESCE(%s, etag), last_modified = COALESCE(%s, last_modified),

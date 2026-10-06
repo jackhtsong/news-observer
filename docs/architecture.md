@@ -1,5 +1,11 @@
 # Global events globe. Weekend architecture
 
+> **Historical document.** This is the original hackathon proposal. The project has since
+> changed: news comes from BBC, Guardian, and Al Jazeera RSS feeds plus GDELT conflict events;
+> natural hazards, satellite imagery, and personalization were removed; the database is Neon
+> Postgres; the site and API run on Vercel. See the [README](../README.md) for the current
+> architecture. The notes and proposal below are kept for context only.
+
 Current product focus: Technology (`technology`), Government & Politics (`politics`), Finance (`finance`), and Society (`humanitarian`) are enabled by default. Technology is a new shared-schema layer ID; Society broadens the humanitarian display grouping to civic and social topics. Natural disasters are optional and off by default. See `apps/web/docs/globe-and-api.md` for the current implementation; the weekend proposal below is historical.
 > Current team decision: TigerData/PostgreSQL replaces Snowflake. The Snowflake-specific setup and constraints below are historical. Use `apps/api/README.md` for the current connection and API contract; coordinate PostgreSQL DDL with Track B.
 

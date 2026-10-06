@@ -1,13 +1,12 @@
--- Local news by country: publishers, their RSS feeds, and every feed item seen.
+-- News outlets (publishers), their RSS feeds, and every feed item seen.
 -- Safe to re-run (idempotent).
 --
 -- Apply with:
 --   psql "$DATABASE_URL" -f sql/007_local_news.sql
 --
--- Filled by jobs/news/directory.py (publishers + feeds) and jobs/ingest/rss.py (items).
--- Items wait in raw.feed_item as 'pending' until enrichment (summary, geocode, category, and
--- the locality check: is the story about the publisher's own country?) promotes them into
--- mart.event or rejects them.
+-- Filled by jobs/news/sources.py (publishers + feeds) and jobs/ingest/rss.py (items).
+-- Items wait in raw.feed_item as 'pending' until enrichment (jobs/news/enrich.py: summary,
+-- geocode, category) promotes them into mart.event or rejects them.
 
 CREATE TABLE IF NOT EXISTS mart.publisher (
   publisher_id   text PRIMARY KEY,                    -- 'pub:yle.fi'

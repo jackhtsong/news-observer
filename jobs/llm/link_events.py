@@ -17,10 +17,12 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 API_DIR = REPO_ROOT / "apps" / "api"
 
-if str(API_DIR) not in sys.path:
-    sys.path.insert(0, str(API_DIR))
+for path in (API_DIR, REPO_ROOT):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 from db import database_configured, database_url, load_repo_env  # noqa: E402
+from jobs.news.sources import NEWS_SOURCES  # noqa: E402
 
 # Configuration
 MODEL = "gemini-3.5-flash-lite"
@@ -28,6 +30,12 @@ MIN_CONFIDENCE = 0.3  # Lower threshold for exploratory linking (was 0.7)
 MIN_PLAUSIBILITY = 0.5  # Minimum plausibility to run verification stage
 BATCH_SIZE_NEWS = 3  # Reduced for two-stage processing (hypothesis + verify)
 RATE_LIMIT_DELAY = 4.5  # Seconds between API calls (15 per minute limit = 4 second minimum)
+# Daily runs: only stories from the last WINDOW_DAYS are compared, each new story against at
+# most MAX_CANDIDATES others, and a run stops after MAX_CALLS Gemini calls. Stories it did not
+# reach keep linked_at NULL and are picked up by the next run.
+WINDOW_DAYS = 3
+MAX_CANDIDATES = 6
+MAX_CALLS = 250
 
 # =============================================================================
 # SHARED UTILITIES
@@ -99,19 +107,24 @@ def _insert_link(cursor, link: dict):
 # NEWS ↔ NEWS LINKING
 # =============================================================================
 
-def _find_news_news_candidates(news_events: list[dict]) -> dict[str, list[dict]]:
+def _find_news_news_candidates(news_events: list[dict], pending: set[str],
+                                max_candidates: int = MAX_CANDIDATES) -> dict[str, list[dict]]:
     """
-    Find candidate news-news pairs using smart strategies.
+    Candidate pairs for each story not yet linked (id in `pending`), against every other
+    story in the window. A pair of two pending stories is considered once, from the first.
+    Each story keeps its `max_candidates` best candidates, by keyword overlap then recency.
 
     Returns: Dict mapping news_id → list of candidate news events
     """
     candidates_by_news = {}
 
     for i, news_a in enumerate(news_events):
-        candidates = []
+        if news_a['id'] not in pending:
+            continue
+        scored = []
 
         for j, news_b in enumerate(news_events):
-            if i >= j:  # Skip self and already-compared pairs
+            if i == j or (news_b['id'] in pending and j < i):  # self, or a pair already considered
                 continue
 
             # Strategy 1: Keyword overlap (semantic similarity)
@@ -119,9 +132,12 @@ def _find_news_news_candidates(news_events: list[dict]) -> dict[str, list[dict]]
                 news_a.get('keywords', []),
                 news_b.get('keywords', [])
             )
+            time_diff_hours = abs(
+                (news_a['occurred_at'] - news_b['occurred_at']).total_seconds() / 3600
+            )
 
             if kw_overlap >= 0.4:  # 40% keyword overlap
-                candidates.append(news_b)
+                scored.append((kw_overlap, -time_diff_hours, news_b))
                 continue
 
             # Strategy 2: Geographic clustering
@@ -129,22 +145,18 @@ def _find_news_news_candidates(news_events: list[dict]) -> dict[str, list[dict]]
                 news_a['lat'], news_a['lng'],
                 news_b['lat'], news_b['lng']
             )
-
-            time_diff_hours = abs(
-                (news_a['occurred_at'] - news_b['occurred_at']).total_seconds() / 3600
-            )
-
             if distance < 200 and time_diff_hours < 48:  # Same region, recent
-                candidates.append(news_b)
+                scored.append((kw_overlap, -time_diff_hours, news_b))
                 continue
 
             # Strategy 3: Same category + recent
             if (news_a.get('category') == news_b.get('category') and
                 time_diff_hours < 72):  # Same topic, within 3 days
-                candidates.append(news_b)
+                scored.append((kw_overlap, -time_diff_hours, news_b))
 
-        if candidates:
-            candidates_by_news[news_a['id']] = candidates
+        scored.sort(key=lambda entry: entry[:2], reverse=True)
+        if scored:
+            candidates_by_news[news_a['id']] = [entry[2] for entry in scored[:max_candidates]]
 
     return candidates_by_news
 
@@ -358,7 +370,7 @@ def _verify_news_news_batch(client, news_a: dict, candidates: list[dict]) -> tup
     return verified_links, verify_calls
 
 
-def link_news_to_news(conn, client) -> dict:
+def link_news_to_news(conn, client, max_calls: int = MAX_CALLS) -> dict:
     """
     Link news articles to each other.
 
@@ -370,20 +382,24 @@ def link_news_to_news(conn, client) -> dict:
 
     cursor = conn.cursor()
 
-    # Fetch news events
+    # Fetch recent news events; linked_at is NULL for stories no run has processed yet
     cursor.execute("""
         SELECT
             event_id, category, title, summary,
-            occurred_at, lat, lng, keywords
+            occurred_at, lat, lng, keywords, linked_at IS NULL
         FROM mart.event
-        WHERE source IN ('gnews', 'wikifeeds')
+        WHERE source = ANY(%s)
+          AND occurred_at >= now() - make_interval(days => %s)
           AND keywords IS NOT NULL
           AND jsonb_array_length(keywords) > 0
         ORDER BY occurred_at DESC
-    """)
+    """, (list(NEWS_SOURCES), WINDOW_DAYS))
 
     news_events = []
+    pending = set()
     for row in cursor.fetchall():
+        if row[8]:
+            pending.add(row[0])
         news_events.append({
             'id': row[0],
             'category': row[1],
@@ -395,11 +411,11 @@ def link_news_to_news(conn, client) -> dict:
             'keywords': row[7] or [],
         })
 
-    print(f"Found {len(news_events)} news events")
+    print(f"Found {len(news_events)} news events in the last {WINDOW_DAYS} days, {len(pending)} not yet linked")
 
     # Generate candidates
     print("\nGenerating candidates...")
-    candidates_by_news = _find_news_news_candidates(news_events)
+    candidates_by_news = _find_news_news_candidates(news_events, pending)
 
     total_candidates = sum(len(cands) for cands in candidates_by_news.values())
     print(f"Found {total_candidates} candidate pairs across {len(candidates_by_news)} news articles")
@@ -413,14 +429,26 @@ def link_news_to_news(conn, client) -> dict:
             'candidates_evaluated': total_candidates,
         }
 
+    def mark_linked(event_ids):
+        cursor.execute("UPDATE mart.event SET linked_at = now() WHERE event_id = ANY(%s)", (list(event_ids),))
+
+    # New stories with nothing to compare against are done already.
+    mark_linked(pending - set(candidates_by_news))
+    conn.commit()
+
     # Verify relationships with Gemini (batched)
     links_created = 0
     links_rejected = 0
     api_calls = 0
+    stopped_early = False
 
     print("\nVerifying relationships with AI (two-stage)...")
 
     for news_id, candidates in candidates_by_news.items():
+        if api_calls >= max_calls:
+            stopped_early = True
+            print(f"\n  Reached the {max_calls}-call budget; the remaining stories wait for the next run.")
+            break
         # Find the source news event
         news_a = next(n for n in news_events if n['id'] == news_id)
 
@@ -485,6 +513,7 @@ def link_news_to_news(conn, client) -> dict:
                       f"({link['relation']:20} conf={confidence:.2f} p={plaus:.2f} e={evid:.2f})")
 
         # Commit per source article so a crash only loses the article in progress
+        mark_linked([news_id])
         conn.commit()
 
     cursor.close()
@@ -496,6 +525,7 @@ def link_news_to_news(conn, client) -> dict:
         'api_calls': api_calls,
         'links_created': links_created,
         'links_rejected': links_rejected,
+        'stopped_early': stopped_early,
         'avg_confidence': 0.0,  # TODO: calculate from created links
     }
 
@@ -504,12 +534,13 @@ def link_news_to_news(conn, client) -> dict:
 # MAIN ENTRY POINT
 # =============================================================================
 
-def link_all_events(dry_run: bool = False) -> dict:
+def link_all_events(dry_run: bool = False, max_calls: int = MAX_CALLS) -> dict:
     """
     Generate links between news events.
 
     Args:
         dry_run: Count candidates only; no Gemini calls or database writes
+        max_calls: Stop after this many Gemini calls; unreached stories wait for the next run
 
     Returns:
         Summary dict with results from each linking type
@@ -547,7 +578,7 @@ def link_all_events(dry_run: bool = False) -> dict:
             "status": "dry_run" if dry_run else "complete",
         }
 
-        results['news_news'] = link_news_to_news(conn, client)
+        results['news_news'] = link_news_to_news(conn, client, max_calls)
 
         return results
 
@@ -562,6 +593,8 @@ def main():
     parser = argparse.ArgumentParser(description="Link related news events")
     parser.add_argument("--dry-run", action="store_true",
                         help="Count candidates only; no Gemini calls or database writes")
+    parser.add_argument("--max-calls", type=int, default=MAX_CALLS,
+                        help="Stop after this many Gemini calls (default: %(default)s)")
 
     args = parser.parse_args()
 
@@ -569,7 +602,7 @@ def main():
     print("EVENT LINKING" + (" (DRY RUN)" if args.dry_run else ""))
     print("=" * 80)
 
-    result = link_all_events(dry_run=args.dry_run)
+    result = link_all_events(dry_run=args.dry_run, max_calls=args.max_calls)
 
     print("\n" + "=" * 80)
     print("LINKING COMPLETE")

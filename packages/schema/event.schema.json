@@ -44,8 +44,8 @@
     }
   },
   "properties": {
-    "id": { "type": "string", "description": "event_id, e.g. usgs:us7000abcd" },
-    "source": { "type": "string", "description": "source, e.g. usgs, firms, gdacs, gnews, wikifeeds, conflict_csv" },
+    "id": { "type": "string", "description": "event_id, e.g. rss:3f2a… or conflict-csv:https://…" },
+    "source": { "type": "string", "description": "source: bbc, guardian, aljazeera (jobs/news/sources.py), conflict_csv (GDELT), or acled" },
     "sourceUrl": { "type": ["string", "null"], "description": "info_url" },
     "imageUrl": { "type": ["string", "null"], "description": "image_url: article thumbnail, loaded directly from the publisher" },
     "layerId": {

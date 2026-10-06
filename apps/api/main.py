@@ -6,17 +6,14 @@ import json
 import base64
 import hashlib
 import os
-import secrets
-import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from jsonschema import Draft202012Validator, FormatChecker
-from ingest_runner import run_ingest
 
 from db import (
     fetch_mart_events,
@@ -30,8 +27,7 @@ from db import (
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES_DIR = REPO_ROOT / "data" / "fixtures"
 SNAPSHOTS_DIR = REPO_ROOT / "data" / "snapshots"
-# API-shaped (mart.event) fixtures. data/fixtures/events.json is the news
-# pipeline's staging file (run_ingest.py → tigerdata/upload.py), not API data.
+# API-shaped (mart.event) sample data, served when no database is configured or reachable.
 EVENTS_FIXTURE = FIXTURES_DIR / "api_events.json"
 LINKS_FIXTURE = FIXTURES_DIR / "api_links.json"
 EVENTS_SNAPSHOT = SNAPSHOTS_DIR / "events.json"
@@ -62,7 +58,7 @@ def _cors_origins() -> list[str]:
     return list(dict.fromkeys(origins))
 
 
-app = FastAPI(title="Hypothesis Globe API", version="0.2.0")
+app = FastAPI(title="Eye of Horus API", version="0.3.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins(),
@@ -471,43 +467,4 @@ def get_event(event_id: str, fixture: int | None = None) -> dict[str, Any]:
         if event["id"] == event_id:
             return event
     raise HTTPException(status_code=404, detail=f"event not found: {event_id}")
-
-
-def _extract_ingest_secret(
-    authorization: str | None,
-    x_ingest_secret: str | None,
-) -> str | None:
-    if x_ingest_secret and x_ingest_secret.strip():
-        return x_ingest_secret.strip()
-    if authorization and authorization.lower().startswith("bearer "):
-        token = authorization[7:].strip()
-        return token or None
-    return None
-
-
-@app.post("/ingest/run")
-def ingest_run(
-    authorization: str | None = Header(default=None),
-    x_ingest_secret: str | None = Header(default=None, alias="X-Ingest-Secret"),
-) -> dict[str, Any]:
-    """Run the configured Track B loader after authenticating the request."""
-    expected = os.environ.get("INGEST_SECRET", "").strip()
-    provided = _extract_ingest_secret(authorization, x_ingest_secret)
-    authorized = (
-        bool(provided)
-        and bool(expected)
-        and secrets.compare_digest(provided.encode(), expected.encode())
-    )
-    if not authorized:
-        raise HTTPException(status_code=401, detail="Unauthorized: valid INGEST_SECRET required")
-
-    default_command = [sys.executable, "-m", "jobs.ingest"] if database_configured() else None
-    run_ingest(REPO_ROOT, default_command=default_command)
-    if database_configured():
-        _remember_last_ingest(ping_and_warmup(fetch_last_ingest=True).last_ingest_at)
-    return {
-        "ok": True,
-        "status": "completed",
-        "lastIngestAt": _resolved_last_ingest(None),
-    }
 

@@ -4,9 +4,8 @@
 -- Apply with:
 --   psql "$DATABASE_URL" -f sql/008_event_publisher.sql
 --
--- Written by jobs/news/enrich_local.py when it promotes raw.feed_item rows into mart.event.
--- country_iso3 on these rows is the publisher's country ("news from X"); lat/lng is where the
--- story is about.
+-- Written by jobs/news/enrich.py when it promotes raw.feed_item rows into mart.event.
+-- On these rows country_iso3 and lat/lng are where the story happens.
 
 ALTER TABLE mart.event ADD COLUMN IF NOT EXISTS publisher_id text REFERENCES mart.publisher (publisher_id);
 ALTER TABLE mart.event ADD COLUMN IF NOT EXISTS language text;

@@ -1,10 +1,14 @@
-# Hypothesis Globe API
+# Eye of Horus API
 
-Serves `GET /events` from TigerData `mart.event` when `DATABASE_URL` is set and the database answers. Otherwise it serves the last-good `data/snapshots` copy, then `data/fixtures`. Fixture mode needs no database URL.
+A read-only FastAPI service. It serves events and links from Postgres (`mart.event`,
+`mart.event_link`) when `DATABASE_URL` is set and the database answers. Otherwise it serves
+the last-good `data/snapshots` copy, then the bundled `data/fixtures`. It never writes to the
+database; the daily jobs in [`jobs/`](../../jobs/README.md) do that.
 
-## Run
+## Run locally
 
-Python 3.12+. Copy `.env.example` to `.env` at the repo root and leave `DATABASE_URL` empty for fixtures.
+Python 3.12+. Copy `.env.example` to `.env` at the repository root. Leave `DATABASE_URL`
+empty to serve the sample data.
 
 ```bash
 cd apps/api
@@ -17,64 +21,51 @@ uvicorn main:app --reload --host 127.0.0.1 --port 43124
 ```bash
 curl http://127.0.0.1:43124/health
 curl "http://127.0.0.1:43124/events?fixture=1"
-curl http://127.0.0.1:43124/events/usgs:us7000example
-curl http://127.0.0.1:43124/events/usgs:us7000example/links
+curl http://127.0.0.1:43124/links
 ```
 
-## Env
+Run the tests with `python -m unittest discover -s tests -v` from `apps/api`. They use temporary
+directories and simulated database failures, never a real database or credentials.
 
-Put secrets in the repo-root `.env`. That file is gitignored. Process variables take precedence, then `.env`, then legacy `.env.local`. Restart the API after changing configuration. GitHub Actions secrets are available to configured workflows, not automatically to this local process.
+## Routes
 
-| Variable | Required | Notes |
-| --- | --- | --- |
-| `DATABASE_URL` | For live data | TigerData Postgres URL. Unset means fixtures. |
-| `FIRMS_MAP_KEY` | For FIRMS only | USGS and GDACS ingest run without it. |
-| `INGEST_SECRET` | For ingest | Shared secret for `POST /ingest/run`. |
-| `INGEST_COMMAND` | No | JSON argument array override; defaults to `python -m jobs.ingest` when the database is configured. |
-| `INGEST_TIMEOUT_SECONDS` | No | Default 60, allowed 1–300 seconds. |
-| `CORS_ORIGIN` or `VITE_ORIGIN` | No | Defaults to `http://127.0.0.1:43123`. |
-
-Child output is discarded and never returned to the caller. Test the loader
-standalone when diagnosing its failures. Do not trigger ingestion during the pitch.
-
-- `GET /health` runs `SELECT 1` when `DATABASE_URL` is set and returns `database` (`ok`, `fixture`, `error`, or `dark`), `warmupMs`, and `lastIngestAt`.
-- `GET /events` returns `sourceStatus.database`. A dark database falls back to the snapshot, then fixtures. A hard `503` happens only when no cache exists.
-- `POST /ingest/run` requires `INGEST_SECRET`. It loads USGS and GDACS, and FIRMS when `FIRMS_MAP_KEY` is set.
-
-The shared database already has its schema and loaded events. Do not apply the schema or reload sources just to run the app. Get its connection URL from the service owner and set `DATABASE_URL` locally.
-
-`/health` also reports `dataSource`, `usingFixtures`, and `sourceStatus`. A usable fallback can report `ok: true` while `database` reports an outage. Sensor status is `unknown` unless producer metadata is available; fixtures report `fixture`.
-
-Live events and links are schema-validated before replacing atomic snapshots. Reads load the complete dataset before filtering and pagination. This preserves fallback data but assumes a demo-sized dataset. Database connections require TLS, have a five-second connection timeout, and use a ten-second statement timeout.
-
-The ingestion runner rejects concurrent runs within one API process, enforces a timeout, and discards child output. Responses are 401 for invalid authentication, 409 when busy, 502 for loader failure, 503 for missing configuration, and 504 for timeout. Run one API worker for this demo.
-
-Run tests with `python -m unittest discover -s tests -v` from `apps/api`.
-
-## Ranked feed and globe pins
-
-`GET /feed` returns up to `n=100` events ranked by Track D's location, keyword, significance, and recency weights. `GET /feed/pins` returns up to `n=10` ranked events separated by at least `spreadDegrees=30`. Both use the same validated database, snapshot, and fixture path as `/events`.
-
-Selections apply to the current request only. These endpoints neither read nor write `data/user_config.json`. No account or saved preference API is involved.
-
-| Query | Behavior |
+| Route | Returns |
 | --- | --- |
-| `types` | Comma-separated schema layer IDs; omitted means all, empty means none. Unknown IDs return 422. |
-| `keywords` | Repeat for multiple topics, up to 20 nonempty strings of at most 100 characters each. |
-| `lat`, `lng` | Optional location for proximity ranking; supply both. |
-| `minSignificance` | 0–100, default 0. |
-| `start`, `end` | Optional timezone-aware timestamps, inclusive start and exclusive end. No implicit seven-day cutoff. |
-| `n` | Feed: 1–1000; pins: 1–100. |
-| `spreadDegrees` | Pins only: 0–180. A clustered dataset may return fewer than n pins. |
-| `fixture=1` | Force sample data while still applying ranking and filters. |
+| `GET /health` | `ok`, `database` (`ok`, `fixture`, `error`, or `dark`), `dataSource`, `usingFixtures`, `sourceStatus`, `warmupMs`, `lastIngestAt` |
+| `GET /events` | `{generatedAt, sourceStatus, events, nextCursor}` |
+| `GET /events/{id}` | One Event |
+| `GET /events/{id}/links` | The EventLinks that touch that event |
+| `GET /links` | Every EventLink |
 
-Responses use `{generatedAt, sourceStatus, events, nextCursor: null}`. The `events` array contains unchanged Event objects. These are bounded ranked results, not paginated full datasets. Fallback responses include `fallbackDetail`; an empty result is valid.
+`/events` query parameters: `types` (comma-separated `layerId`s), `start` (inclusive) and `end`
+(exclusive) as timezone-aware ISO timestamps, `minSignificance`, `limit` (default 2000, max 8000),
+`cursor` (from `nextCursor`), and `fixture=1` to force sample data. Events and links follow the
+shared schemas in [`packages/schema/`](../../packages/schema). Only categories that
+`event.schema.json` lists are read from the database.
 
-Examples:
+A database outage falls back to the snapshot, then the fixtures; a `503` happens only when none
+is readable. A usable fallback can report `ok: true` while `database` reports the outage.
+`sourceStatus` keys are `news`, `gdelt`, and `database`; feed status is `unknown` unless a job
+recorded it, and `fixture` for sample data.
 
-```bash
-curl 'http://127.0.0.1:43124/feed?types=wildfire&keywords=fire&n=5'
-curl 'http://127.0.0.1:43124/feed/pins?lat=49.28&lng=-123.12&n=10&spreadDegrees=30'
-```
+Database connections require TLS, time out after five seconds, and limit statements to ten
+seconds. Reads load the complete dataset before filtering and paging, which suits the
+90-day window the daily cleanup keeps.
 
-The Next.js proxy exposes these as `/api/feed` and `/api/feed/pins` in `DATA_MODE=api`. Frontend-only fixture mode returns 503 for ranking routes; run FastAPI with `fixture=1` to test ranking on samples. The globe still uses `/events` for its complete layer/heatmap dataset. `/feed/smart` and `/feed/links` remain unimplemented.
+## Environment
+
+Process variables take precedence, then the repository-root `.env`, then a legacy `.env.local`.
+
+| Variable | Notes |
+| --- | --- |
+| `DATABASE_URL` | Neon Postgres connection string. Empty means sample data. |
+| `CORS_ORIGIN` | Optional, comma-separated. The website calls the API from its server, so browsers never need CORS. |
+
+## Deploy on Vercel
+
+The API is its own Vercel project built from the **repository root**: [`server.py`](../../server.py)
+loads this app, [`pyproject.toml`](../../pyproject.toml) lists its dependencies, and
+[`vercel.json`](../../vercel.json) keeps the website and jobs out of the function bundle. Set
+`DATABASE_URL` in the project's environment variables. The disk is read-only there, so no
+snapshot is written; an outage falls back straight to the fixtures. Keep the versions in
+`pyproject.toml` in step with `requirements.txt`.

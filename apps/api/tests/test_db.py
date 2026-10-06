@@ -17,11 +17,11 @@ class DatabaseTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             (root / ".env").write_text('DATABASE_URL="postgresql://primary.invalid/db"\n')
-            (root / ".env.local").write_text('DATABASE_URL=legacy\nFIRMS_MAP_KEY=test-only\n')
+            (root / ".env.local").write_text('DATABASE_URL=legacy\nGOOGLE_API_KEY=test-only\n')
             with patch.object(db, "REPO_ROOT", root), patch.dict(os.environ, {}, clear=True):
                 db.load_repo_env()
                 self.assertEqual(db.database_url(), "postgresql://primary.invalid/db")
-                self.assertEqual(os.environ["FIRMS_MAP_KEY"], "test-only")
+                self.assertEqual(os.environ["GOOGLE_API_KEY"], "test-only")
                 os.environ["DATABASE_URL"] = "process-wins"
                 db.load_repo_env()
                 self.assertEqual(db.database_url(), "process-wins")
@@ -65,7 +65,7 @@ class DatabaseTests(unittest.TestCase):
 
     def test_postgres_numeric_and_nested_attributes_are_json_serializable(self):
         row = {
-            "id": "test", "source": "usgs", "layer_id": "earthquake", "title": "Test",
+            "id": "test", "source": "conflict_csv", "layer_id": "conflict", "title": "Test",
             "lng": Decimal("1.2"), "lat": Decimal("3.4"), "significance": Decimal("5"),
             "geo_precision": "point", "geo_source": "native",
             "occurred_at": datetime(2026, 10, 3, tzinfo=timezone.utc),

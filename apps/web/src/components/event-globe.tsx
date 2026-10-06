@@ -28,6 +28,7 @@ import { arcSpecs, floatingArc, growProgress, indexLinks, otherEnd, pickTarget, 
 import { GLOBE, PIN, eventColor } from "@/lib/globe-config";
 import { canSpin, clampViewLat, spinUpFrame, type View } from "@/lib/idle-spin";
 import { alignStarField, createStarField } from "@/lib/star-field";
+import { sourceLabel } from "@/lib/sources";
 
 export type Location = { lat: number; lng: number };
 /** Integration hook: these selections are local; they never submit a request. */
@@ -1627,7 +1628,7 @@ export default function EventGlobe({ view, headlines, allEvents, links, events, 
         {event && <RelatedEventControls key={event.id} event={event} allEvents={allEvents}
           links={links.links ? linkIndex.get(event.id) ?? [] : undefined} error={links.error} onVisit={visitEvent} />}
         {event && <p className="card-time">{exactTime(event.occurredAt)}</p>}
-        <div className="card-footer">{href ? <a href={href} target="_blank" rel="noreferrer">{event!.source.toUpperCase()} ↗</a> : <span>{event?.source.toUpperCase() ?? "Coordinates captured"}</span>}
+        <div className="card-footer">{href ? <a href={href} target="_blank" rel="noreferrer">{sourceLabel(event!.source)} ↗</a> : <span>{(event ? sourceLabel(event.source) : "Coordinates captured")}</span>}
           {(event ? event.id === selectedEvent?.id : selection?.kind === "location") && <button onClick={clearSelection}>Close</button>}</div>
         </>}
       </article>;

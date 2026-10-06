@@ -1,5 +1,11 @@
 # Globe visuals and backend integration
 
+> **Status:** a running log of how the globe was built. The code (`src/lib/layers.ts`,
+> `src/components/event-globe.tsx`) and the [project README](../../../README.md) describe
+> current behavior. Natural hazards (earthquake, wildfire, and the other hazard layers),
+> per-layer heatmap modes, and the FIRMS plans below were later removed; sections that
+> mention them are kept as history.
+
 ## Screen and readability
 
 Earth occupies the center of the page. There is no dashboard header, event list, inspector, or permanent connection banner. A compact rotation control and interaction hint remain. Data errors show a retry notice; sample cards are explicitly labeled **Sample**.
@@ -182,7 +188,6 @@ Each of six regions (North America, South America, Europe, Africa, Asia, and Oce
 
 - [Current default view](http://localhost:3000/?layers=technology,politics,finance,humanitarian&t=all)
 - [All six primary topics](http://localhost:3000/?layers=technology,politics,finance,humanitarian,conflict,news&t=all)
-- [Optional disaster overlay fixtures](http://localhost:3000/?layers=earthquake,wildfire&t=all)
 
 Explicit `layers` in an existing URL still overrides defaults. Open `/` without a query or use the current-default link to see the new focus. Filters remain local; fixtures are not injected into live API responses.
 
@@ -214,12 +219,6 @@ The marker threshold and 5,000 cap do not remove events from density calculation
 
 New URL fields are `minSignificance` (finite nonnegative number, default 50) and `heatmap` (earthquake or wildfire, default wildfire). They round-trip through history alongside `layers`, `modes`, and `t`. Mode defaults changed: missing earthquake/wildfire modes now mean both; explicit `modes=wildfire:markers` remains marker-only. Existing non-density heatmap modes still become markers.
 
-### FIRMS aggregation handoff (proposed; not implemented)
-
-The current frontend consumes one `/api/events` response and computes density locally. It does not aggregate live FIRMS on the server. Before loading large FIRMS feeds, the backend should group hotspots by spatial cell and UTC time bucket, sum a consistently defined nonnegative weight, and return cell centroids for density. Retain individual high-significance Events with stable IDs for clickable markers; do not present an aggregated cell as an individual source event.
-
-A proposed separate `GET /heatmap-cells?layer=wildfire&start=...&end=...&resolution=...` response would be `{ layerId, start, end, resolution, cells: [{ lat, lng, weight, count }] }`. This endpoint and its Next.js proxy allowlist entry do not exist yet; agree its contract with the backend owner before wiring it. Keep the marker Event array separate from that derived density response, reuse the same layer/time filters, and never send the marker significance threshold to the density query. Current backend `/events` defaults to 2,000 rows, with a maximum of 8,000; the frontend does not paginate, so a 5,000 render cap does not imply every backend event is loaded.
-
 Validation includes a 6,000-event synthetic filter test: exactly 5,000 highest-significance markers survive while all 6,000 remain heatmap input. Tests also cover the inclusive significance boundary, one-heatmap fallback, malformed URLs, mode persistence, and immutable source data. This validates data selection, not GPU performance at 5,000 points. Browser checks use the local fixtures; large live-feed performance still needs server aggregation and GPU profiling.
 
 
@@ -233,8 +232,6 @@ Validation includes a 6,000-event synthetic filter test: exactly 5,000 highest-s
 | Society | `humanitarian` | On, markers |
 | Conflict | `conflict` | Off, markers |
 | News | `news` | Off, markers |
-| Earthquakes | `earthquake` | Off, both when enabled |
-| Wildfires | `wildfire` | Off, both when enabled |
 | Terror | `terror` | Off, markers |
 
 The first six topics lead the menu. Legacy categories remain for stored data and deep-link compatibility. Category names in event cards use the same friendly labels. Heatmap focus controls appear only when a density-capable layer is enabled, so the default product view is entirely marker-based. The 5,000 marker cap, significance threshold, time filters, selected-card retention, and one-heatmap limit remain in place.

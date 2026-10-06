@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS mart.protest (
   crowd_size text
 );
 
+-- Views select e.*, so they are rebuilt (not replaced) to follow columns added to mart.event later.
 INSERT INTO mart.event_kind (category, detail_table, label) VALUES
   ('conflict', 'mart.conflict', 'Conflict'),
   ('protest', 'mart.protest', 'Protest'),
@@ -92,21 +93,24 @@ ON CONFLICT (category) DO UPDATE
   SET detail_table = EXCLUDED.detail_table,
       label = EXCLUDED.label;
 
-CREATE OR REPLACE VIEW mart.v_conflict AS
+DROP VIEW IF EXISTS mart.v_conflict;
+CREATE VIEW mart.v_conflict AS
 SELECT e.*, c.event_type, c.disorder_type, c.fatalities, c.civilian_targeting,
        c.actor1, c.actor2, c.interaction, c.location, c.country, c.population_best
 FROM mart.event e
 JOIN mart.conflict c ON c.event_id = e.event_id
 WHERE e.category = 'conflict';
 
-CREATE OR REPLACE VIEW mart.v_protest AS
+DROP VIEW IF EXISTS mart.v_protest;
+CREATE VIEW mart.v_protest AS
 SELECT e.*, p.event_type, p.disorder_type, p.fatalities, p.civilian_targeting,
        p.actor1, p.actor2, p.crowd_size, p.location, p.country, p.population_best
 FROM mart.event e
 JOIN mart.protest p ON p.event_id = e.event_id
 WHERE e.category = 'protest';
 
-CREATE OR REPLACE VIEW mart.v_strategic_development AS
+DROP VIEW IF EXISTS mart.v_strategic_development;
+CREATE VIEW mart.v_strategic_development AS
 SELECT e.*, s.event_type, s.disorder_type, s.fatalities, s.civilian_targeting,
        s.actor1, s.actor2, s.interaction, s.location, s.country, s.population_best
 FROM mart.event e

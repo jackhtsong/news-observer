@@ -1,4 +1,4 @@
-# Hypothesis Globe frontend
+# Eye of Horus frontend
 
 Next.js App Router + TypeScript. Run commands from `apps/web`. Use Node.js 20.9+.
 
@@ -52,9 +52,9 @@ npm run build
 
 The initial install reports five high-severity audit findings in the ESLint development dependency chain (`braces` → `micromatch` → `fast-glob` → Next's lint plugin/config). The suggested automated fix downgrades the Next lint configuration to 14.x, so it has not been applied. Recheck upstream fixes before deployment.
 
-## Later deployment
+## Deployment (Vercel)
 
-Use a Next.js server runtime with `DATA_MODE=api` and a backend URL reachable from that runtime. The proxy does not support a static export. Build with the repository root available because fixtures are imported from outside `apps/web`.
+Create a Vercel project from this repository with **Root Directory** `apps/web` (framework: Next.js) and keep "Include files outside the root directory in the Build Step" enabled, because the sample data is imported from `data/fixtures/`. Set `DATA_MODE=api` and `API_BASE_URL` to the API project's URL (see the [root README](../../README.md#deploy)). The proxy needs the Next.js server runtime; a static export does not work. Never put `DATABASE_URL` or any API key in this project.
 
 ## Interactive globe
 
@@ -62,7 +62,7 @@ Earth is the main view. Numbered pins follow geographic coordinates and connect 
 
 See [globe visuals and backend integration](docs/globe-and-api.md) for all named visual settings, projection/visibility behavior, field mappings, API routes, selection hooks, current limitations, and verification steps.
 
-The page fetches `GET /api/events` once on mount (and on error retry). Rotation and selections are local. Expanded cards call the relationship route; details and health routes are available through the proxy. The smooth Earth uses bundled Natural Earth vector countries with readable borders over the fluid ocean; see [vector globe settings and data](docs/vector-globe.md). The left icon rail groups 29 layer IDs into six categories. Every layer in Conflict & Security, Politics & World, and Economy & Tech is enabled by default; the other categories start off, and Natural Hazards sits at the bottom of the rail. At the default zoom the globe shows a land-clipped heatmap of the visible markers; zooming in past about twice the default size swaps it for pin markers. Markers default to significance ≥ 50 and are capped at 5,000; the right rail exposes the threshold. Layer/time filters are shareable via the URL; Back/Forward restores them. Selected event cards survive disabling their layers. The event loader follows pagination. Backend location search and a visible time scrubber are not implemented.
+The page fetches `GET /api/events` once on mount (and on error retry). Rotation and selections are local. Expanded cards call the relationship route; details and health routes are available through the proxy. The smooth Earth uses bundled Natural Earth vector countries with readable borders over the fluid ocean; see [vector globe settings and data](docs/vector-globe.md). The left icon rail groups 24 layer IDs into five categories. Every layer in Conflict & Security, Politics & World, and Economy & Tech is enabled by default; Humanitarian & Health and Culture & Lifestyle start off. At the default zoom the globe shows a land-clipped heatmap of the visible markers; zooming in past about twice the default size swaps it for pin markers. Markers default to significance ≥ 50 and are capped at 5,000; the right rail exposes the threshold. Layer/time filters are shareable via the URL; Back/Forward restores them. Selected event cards survive disabling their layers. The event loader follows pagination. Backend location search and a visible time scrubber are not implemented.
 
 
 The animated ocean uses [Rare UI Fluid Orb](https://rareui.com/components/fluidorb), copyright © 2026 Swami Malode. Its source is vendored and adapted in `src/components/ui/fluid-orb.tsx`, with the [license retained](docs/licenses/rare-ui-LICENSE.txt). See [fluid ocean notes](docs/fluid-ocean.md).
