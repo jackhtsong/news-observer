@@ -318,7 +318,7 @@ def _load_events_for_request(
             _write_snapshot(mart_events, last_ingest_at=last_ingest)
             return mart_events, _source_status(database="ok", data_source="warehouse"), None
 
-    # TigerData dark / error / misconfigured → last good snapshot or fixtures.
+    # Database dark / error / misconfigured → last good snapshot or fixtures.
     try:
         events, label = _load_events_cache(prefer_snapshot=True)
     except HTTPException as exc:
@@ -332,7 +332,7 @@ def _load_events_for_request(
         raise HTTPException(status_code=503, detail=detail) from exc
 
     database_status = ping.status if ping.status in {"dark", "error"} else "dark"
-    detail = ping.detail or f"Serving {label} after TigerData {database_status}"
+    detail = ping.detail or f"Serving {label} after database {database_status}"
     return events, _source_status(database=database_status, data_source=label), detail
 
 

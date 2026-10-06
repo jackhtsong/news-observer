@@ -1,4 +1,4 @@
-"""TigerData (Postgres) access for health checks and event reads.
+"""Postgres (Neon) access for health checks and event reads.
 
 Fixture mode needs no DATABASE_URL. The connector imports only when a URL is set.
 """
@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -110,6 +112,17 @@ def _iso_z(value: Any) -> str | None:
     return text
 
 
+def _failure(what: str, exc: Exception) -> str:
+    """A safe public detail (error type only), with the full error in the server log.
+
+    The log line masks any password in a connection string, so it is safe in Vercel's logs;
+    the response never carries the message, which can name the host or user.
+    """
+    message = re.sub(r"(://[^:/@\s]+:)[^@\s]+@", r"\1***@", str(exc))
+    print(f"database {what}: {type(exc).__name__}: {message}", file=sys.stderr)
+    return f"Database {what} ({type(exc).__name__})"
+
+
 def _connect():
     import psycopg
 
@@ -199,7 +212,7 @@ def ping_and_warmup(*, fetch_last_ingest: bool = True) -> DatabasePing:
         return DatabasePing(
             status="dark",
             last_ingest_at=None,
-            detail="TigerData connection unavailable",
+            detail=_failure("connection unavailable", exc),
         )
 
     try:
@@ -225,7 +238,7 @@ def ping_and_warmup(*, fetch_last_ingest: bool = True) -> DatabasePing:
         return DatabasePing(
             status="dark",
             last_ingest_at=None,
-            detail="TigerData warmup failed",
+            detail=_failure("warmup failed", exc),
             warmup_ms=int((time.perf_counter() - started) * 1000),
         )
     finally:
@@ -243,7 +256,7 @@ def fetch_mart_events(*, ping: DatabasePing | None = None) -> tuple[list[dict[st
         return None, DatabasePing(
             status="dark",
             last_ingest_at=ping.last_ingest_at,
-            detail="TigerData connection unavailable on event read",
+            detail=_failure("connection unavailable on event read", exc),
             warmup_ms=ping.warmup_ms,
         )
 
