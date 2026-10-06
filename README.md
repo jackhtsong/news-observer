@@ -154,8 +154,19 @@ expected cost is $0 a month for a personal site's traffic.
    Add the `DATABASE_URL` environment variable.
 5. **Website on Vercel.** Import the repository again as a second project with Root Directory
    `apps/web`. Add `DATA_MODE=api` and `API_BASE_URL=https://<your-api-project>.vercel.app`.
-6. **Your domain.** In the website project's Domains settings, add a subdomain of your
-   portfolio site (for example `globe.example.com`) and create the DNS record Vercel shows.
+6. **Your domain.** Either add a subdomain (for example `globe.example.com`) in the website
+   project's Domains settings, or serve it at a path of your portfolio (`example.com/globe`):
+   set `BASE_PATH=/globe` in the website project, redeploy, and add these rewrites to the
+   portfolio project's `vercel.json` (replace the host with the website project's URL):
+
+   ```json
+   {
+     "rewrites": [
+       { "source": "/globe", "destination": "https://news-observer.vercel.app/globe" },
+       { "source": "/globe/:path*", "destination": "https://news-observer.vercel.app/globe/:path*" }
+     ]
+   }
+   ```
 
 After a quiet spell, the first visitor waits a few seconds while Neon and the API function
 wake up.

@@ -1,4 +1,5 @@
 import { DoubleSide, MeshBasicMaterial, TextureLoader, type Texture } from "three";
+import { withBasePath } from "./base-path";
 
 export type ReliefOptions = {
   strength: number; // 0 = flat; shading change per unit of slope toward/away from the light
@@ -11,7 +12,7 @@ export type ReliefOptions = {
 
 let heightmap: Texture | null = null;
 function reliefTexture() {
-  heightmap ??= new TextureLoader().load("/textures/earth-topology.png");
+  heightmap ??= new TextureLoader().load(withBasePath("/textures/earth-topology.png"));
   return heightmap;
 }
 

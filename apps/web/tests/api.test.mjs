@@ -5,9 +5,12 @@ import ts from "typescript";
 
 // Compile the actual browser loader; type-only fixture imports disappear.
 const source = readFileSync(new URL("../src/lib/api.ts", import.meta.url), "utf8");
-const compiled = ts.transpileModule(source, {
+const compile = (code) => ts.transpileModule(code, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
 }).outputText;
+const asModule = (code) => `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`;
+const basePath = asModule(compile(readFileSync(new URL("../src/lib/base-path.ts", import.meta.url), "utf8")));
+const compiled = compile(source).replace('"./base-path"', JSON.stringify(basePath));
 const { getEvents, getEventLinks, getLinks } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`);
 const fixtures = JSON.parse(readFileSync(new URL("./fixtures/events.json", import.meta.url), "utf8"));
 const liveStatus = { news: "ok", gdelt: "unknown", tigerdata: "ok" };
@@ -104,4 +107,17 @@ test("bulk link loader reads every link once and validates the response", async 
  assert.equal(fetch.mock.calls[0].arguments[1].signal,controller.signal);
  await assert.rejects(getLinks(),/502/);
  await assert.rejects(getLinks(),/invalid/);
+});
+
+test("requests go under the base path when the app is served from one", async () => {
+  process.env.NEXT_PUBLIC_BASE_PATH = "/globe";
+  try {
+    const calls = [];
+    mock.method(globalThis, "fetch", async (url) => { calls.push(url); return Response.json([]); });
+    await getLinks();
+    await getEventLinks("a/b");
+    assert.deepEqual(calls, ["/globe/api/links", "/globe/api/events/a%2Fb/links"]);
+  } finally {
+    delete process.env.NEXT_PUBLIC_BASE_PATH;
+  }
 });

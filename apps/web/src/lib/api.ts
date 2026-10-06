@@ -1,4 +1,5 @@
 import type { events } from "./fixtures";
+import { withBasePath } from "./base-path";
 export type Event = Omit<(typeof events)[number], "sourceUrl" | "imageUrl" | "summary" | "rawRef"> & {
   sourceUrl: string | null;
   /** Article thumbnail, loaded directly from the publisher; null when none is known. */
@@ -31,7 +32,7 @@ export async function getEvents(signal?: AbortSignal) {
     while (true) {
       signal?.throwIfAborted();
       const query = cursor ? `?${new URLSearchParams({ cursor })}` : "";
-      const response = await fetch(`/api/events${query}`, { signal, cache: "no-store" });
+      const response = await fetch(withBasePath(`/api/events${query}`), { signal, cache: "no-store" });
       if (response.status === 409 && attempt === 0) break;
       if (!response.ok) {
         const body = await response.json().catch(() => null);
@@ -66,14 +67,14 @@ async function readLinks(response: Response): Promise<EventLink[]> {
 
 /** Load backend relationship hypotheses for either end of an event link. */
 export async function getEventLinks(eventId: string, signal?: AbortSignal): Promise<EventLink[]> {
-  const response = await fetch(`/api/events/${encodeURIComponent(eventId)}/links`, { signal, cache: "no-store" });
+  const response = await fetch(withBasePath(`/api/events/${encodeURIComponent(eventId)}/links`), { signal, cache: "no-store" });
   if (!response.ok) throw new Error(`Related events request failed (${response.status}).`);
   return readLinks(response);
 }
 
 /** Load every relationship hypothesis once, so hovering a pin never waits on the network. */
 export async function getLinks(signal?: AbortSignal): Promise<EventLink[]> {
-  const response = await fetch("/api/links", { signal, cache: "no-store" });
+  const response = await fetch(withBasePath("/api/links"), { signal, cache: "no-store" });
   if (!response.ok) throw new Error(`Links request failed (${response.status}).`);
   return readLinks(response);
 }
