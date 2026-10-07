@@ -120,14 +120,61 @@ def _failure(what: str, exc: Exception) -> str:
     """
     message = re.sub(r"(://[^:/@\s]+:)[^@\s]+@", r"\1***@", str(exc))
     print(f"database {what}: {type(exc).__name__}: {message}", file=sys.stderr)
-    return f"Database {what} ({type(exc).__name__})"
+    reason = next((label for phrase, label in _KNOWN_FAILURES if phrase in message.lower()), None)
+    return f"Database {what} ({type(exc).__name__}{': ' + reason if reason else ''})"
+
+
+# Common connection failures, named in /health without any host, user, or password.
+_KNOWN_FAILURES = (
+    ("password authentication failed", "password authentication failed"),
+    ("could not translate host name", "host name not found; check the connection string"),
+    ("name or service not known", "host name not found; check the connection string"),
+    ("invalid dsn", "malformed connection string"),
+    ("invalid connection option", "malformed connection string"),
+    ("missing \"=\"", "malformed connection string"),
+    ("timeout expired", "connection timed out"),
+    ("timed out", "connection timed out"),
+    ("does not exist", "database, role, or endpoint does not exist"),
+    ("endpoint is disabled", "Neon endpoint is disabled"),
+    ("ssl", "TLS/SSL negotiation failed"),
+    ("connection refused", "connection refused"),
+)
+
+
+def _ipv4_hostaddr(url: str) -> dict[str, str]:
+    """{"hostaddr": IPv4} for the URL's host name, or {} when there is none to pin.
+
+    Vercel functions cannot open outbound IPv6 connections, and Neon's host names resolve to
+    IPv6 as well as IPv4, so a connection may try the IPv6 address and fail ("Cannot assign
+    requested address"). Pinning the IPv4 address avoids that; libpq still sends `host` for
+    TLS verification and SNI, which Neon uses to route to the right endpoint.
+    """
+    import socket
+
+    from psycopg.conninfo import conninfo_to_dict
+
+    params = conninfo_to_dict(url)
+    host, port = str(params.get("host") or ""), str(params.get("port") or "5432")
+    if not host or params.get("hostaddr") or "," in host + port or host.startswith("/") or not port.isdigit():
+        return {}  # already pinned, several hosts, a Unix socket, or no host
+    try:
+        socket.inet_pton(socket.AF_INET, host)
+        return {}  # already an IPv4 literal
+    except OSError:
+        pass
+    try:
+        infos = socket.getaddrinfo(host, int(port), socket.AF_INET, socket.SOCK_STREAM)
+    except OSError:
+        return {}  # let libpq report the lookup failure itself
+    return {"hostaddr": infos[0][4][0]} if infos else {}
 
 
 def _connect():
     import psycopg
 
-    return psycopg.connect(database_url(), connect_timeout=5, sslmode="require",
-                            options="-c statement_timeout=10000")
+    url = database_url()
+    return psycopg.connect(url, connect_timeout=5, sslmode="require",
+                           options="-c statement_timeout=10000", **_ipv4_hostaddr(url))
 
 
 def _json_value(value: Any) -> Any:

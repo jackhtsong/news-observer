@@ -81,3 +81,19 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(connect.call_args.kwargs["sslmode"], "require")
         self.assertEqual(connect.call_args.kwargs["connect_timeout"], 5)
         self.assertIn("statement_timeout=10000", connect.call_args.kwargs["options"])
+
+    def test_connection_pins_an_ipv4_address_for_host_names(self):
+        # Vercel functions have no outbound IPv6; Neon host names resolve to both families.
+        url = "postgresql://user:pw@ep-x.us-east-2.aws.neon.tech/neondb?sslmode=require"
+        ipv4 = [(2, 1, 6, "", ("3.21.0.10", 5432))]
+        with patch.object(db, "database_url", return_value=url), patch("psycopg.connect") as connect, \
+                patch("socket.getaddrinfo", return_value=ipv4) as lookup:
+            db._connect()
+        self.assertEqual(connect.call_args.kwargs["hostaddr"], "3.21.0.10")
+        self.assertEqual(connect.call_args.args[0], url, "host stays in the URL for TLS and SNI")
+        self.assertEqual(lookup.call_args.args[:3], ("ep-x.us-east-2.aws.neon.tech", 5432, 2))
+        for unpinned in ("postgresql://u:p@10.0.0.5/db", "postgresql://u:p@h1,h2/db", "postgresql:///db?host=/tmp",
+                         "postgresql://u:p@h/db?hostaddr=1.2.3.4"):
+            self.assertEqual(db._ipv4_hostaddr(unpinned), {}, unpinned)
+        with patch("socket.getaddrinfo", side_effect=OSError("no such host")):
+            self.assertEqual(db._ipv4_hostaddr(url), {}, "lookup failures are left for libpq to report")
