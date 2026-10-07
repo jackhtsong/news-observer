@@ -56,8 +56,9 @@ flowchart LR
 3. **Link.** Gemini compares each new story with related stories from the last three days and
    stores the connections it can support with evidence.
 4. **Clean up.** Data older than 90 days is removed.
-5. **Serve.** FastAPI reads events and links from Postgres. If the database is unavailable it
-   serves the bundled sample data in `data/fixtures/`.
+5. **Serve.** FastAPI reads events and links from Postgres. A story or link that doesn't match
+   the shared schema is left out and the rest are shown; the live site never shows sample
+   stories. If the database can't be reached, the site shows an error.
 6. **Display.** The website only ever calls `/api` on its own origin; that route forwards to
    FastAPI from the server, so no database URL or API key reaches the browser.
 

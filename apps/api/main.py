@@ -1,4 +1,4 @@
-"""Eye of Horus FastAPI: events, links, health, and fixture fallback."""
+"""Eye of Horus FastAPI: events, links, and health from the database (samples only without one)."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import json
 import base64
 import hashlib
 import os
+import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -126,17 +127,31 @@ def _validate_rows(data: Any, kind: str) -> list[dict[str, Any]]:
     return data
 
 
+def _usable_rows(rows: list[dict[str, Any]], kind: str) -> list[dict[str, Any]]:
+    """Database rows that pass the shared schema. A malformed row is logged and omitted; the
+    rest are served, even when that leaves none."""
+    usable = []
+    for index, row in enumerate(rows):
+        try:
+            _validate_rows([row], kind)
+        except (ValueError, KeyError, TypeError, AttributeError) as exc:
+            print(f"skipped {kind} {row.get('id') if isinstance(row, dict) else index}: {exc}", file=sys.stderr)
+        else:
+            usable.append(row)
+    return usable
+
+
 def _load_json_array(path: Path, kind: str) -> list[dict[str, Any]]:
     return _validate_rows(_load_json(path), kind)
 
 
-def _load_events_cache(*, prefer_snapshot: bool) -> tuple[list[dict[str, Any]], str]:
-    """Load events from snapshot and/or fixtures. Raises 503 if nothing readable."""
-    order = (
-        ((EVENTS_SNAPSHOT, "snapshot"), (EVENTS_FIXTURE, "fixture"))
-        if prefer_snapshot
-        else ((EVENTS_FIXTURE, "fixture"), (EVENTS_SNAPSHOT, "snapshot"))
-    )
+def _load_events_cache() -> tuple[list[dict[str, Any]], str]:
+    """Without a database, the bundled samples (then any snapshot). With one, only the last
+    real snapshot: a configured site never shows sample events. Raises 503 if nothing is readable."""
+    if database_configured():
+        order: tuple[tuple[Path, str], ...] = ((EVENTS_SNAPSHOT, "snapshot"),)
+    else:
+        order = ((EVENTS_FIXTURE, "fixture"), (EVENTS_SNAPSHOT, "snapshot"))
     errors: list[str] = []
     for path, label in order:
         if not path.is_file():
@@ -150,18 +165,19 @@ def _load_events_cache(*, prefer_snapshot: bool) -> tuple[list[dict[str, Any]], 
         status_code=503,
         detail={
             "error": "No cached events available",
-            "failingSource": "fixtures",
+            "failingSource": "database" if database_configured() else "fixtures",
             "reasons": errors,
         },
     )
 
 
-def _load_links_cache(*, prefer_snapshot: bool) -> tuple[list[dict[str, Any]], str]:
-    order = (
-        ((LINKS_SNAPSHOT, "snapshot"), (LINKS_FIXTURE, "fixture"))
-        if prefer_snapshot
-        else ((LINKS_FIXTURE, "fixture"), (LINKS_SNAPSHOT, "snapshot"))
-    )
+def _load_links_cache() -> tuple[list[dict[str, Any]], str]:
+    """Without a database, the bundled samples (then any snapshot). With one, only the last
+    real snapshot: a configured site never shows sample links. Raises 503 if nothing is readable."""
+    if database_configured():
+        order: tuple[tuple[Path, str], ...] = ((LINKS_SNAPSHOT, "snapshot"),)
+    else:
+        order = ((LINKS_FIXTURE, "fixture"), (LINKS_SNAPSHOT, "snapshot"))
     errors: list[str] = []
     for path, label in order:
         if not path.is_file():
@@ -175,7 +191,7 @@ def _load_links_cache(*, prefer_snapshot: bool) -> tuple[list[dict[str, Any]], s
         status_code=503,
         detail={
             "error": "No cached links available",
-            "failingSource": "fixtures",
+            "failingSource": "database" if database_configured() else "fixtures",
             "reasons": errors,
         },
     )
@@ -213,8 +229,9 @@ def _write_snapshot(events: list[dict[str, Any]], *, last_ingest_at: str | None)
         pass
 
 
-def _force_fixtures(fixture_flag: bool) -> bool:
-    return fixture_flag or not database_configured()
+def _use_fixtures() -> bool:
+    # Sample data is only for running without a database.
+    return not database_configured()
 
 
 def _source_status(*, database: str, data_source: str) -> dict[str, str]:
@@ -296,13 +313,10 @@ def _page_events(events: list[dict[str, Any]], limit: int, cursor: str | None) -
     return events[offset:end], next_cursor
 
 
-def _load_events_for_request(
-    *,
-    fixture_flag: bool,
-) -> tuple[list[dict[str, Any]], dict[str, str], str | None]:
+def _load_events_for_request() -> tuple[list[dict[str, Any]], dict[str, str], str | None]:
     """Fall back on failed reads; a successful empty dataset remains empty."""
-    if _force_fixtures(fixture_flag):
-        events, label = _load_events_cache(prefer_snapshot=False)
+    if _use_fixtures():
+        events, label = _load_events_cache()
         return events, _source_status(database="fixture", data_source=label), None
 
     # Request limits apply after filters and must not truncate the shared cache.
@@ -310,17 +324,13 @@ def _load_events_for_request(
     last_ingest = _resolved_last_ingest(ping.last_ingest_at)
 
     if mart_events is not None:
-        try:
-            _validate_rows(mart_events, "event")
-        except ValueError as exc:
-            ping = DatabasePing("error", ping.last_ingest_at, str(exc))
-        else:
-            _write_snapshot(mart_events, last_ingest_at=last_ingest)
-            return mart_events, _source_status(database="ok", data_source="warehouse"), None
+        mart_events = _usable_rows(mart_events, "event")
+        _write_snapshot(mart_events, last_ingest_at=last_ingest)
+        return mart_events, _source_status(database="ok", data_source="warehouse"), None
 
-    # Database dark / error / misconfigured → last good snapshot or fixtures.
+    # Database dark or erroring → the last good snapshot, never sample data.
     try:
-        events, label = _load_events_cache(prefer_snapshot=True)
+        events, label = _load_events_cache()
     except HTTPException as exc:
         detail = exc.detail if isinstance(exc.detail, dict) else {"error": str(exc.detail)}
         detail = {
@@ -345,17 +355,14 @@ def health() -> dict[str, Any]:
         rows, read_ping = fetch_mart_events(ping=ping)
         if rows is None:
             ping = read_ping
-        else:
-            try:
-                _validate_rows(rows, "event")
-            except ValueError as exc:
-                ping = DatabasePing("error", ping.last_ingest_at, str(exc), ping.warmup_ms)
+        elif skipped := len(rows) - len(_usable_rows(rows, "event")):
+            ping = DatabasePing("ok", ping.last_ingest_at, f"{skipped} event rows omitted: they violate the shared schema", ping.warmup_ms)
     last_ingest = _resolved_last_ingest(ping.last_ingest_at)
     ok = ping.status == "ok"
     detail = ping.detail
     if ping.status != "ok":
         try:
-            _, data_source = _load_events_cache(prefer_snapshot=ping.status != "fixture")
+            _, data_source = _load_events_cache()
             ok = True
         except HTTPException:
             data_source = "unavailable"
@@ -380,14 +387,11 @@ def list_events(
     minSignificance: float = 0,
     limit: int = Query(default=2000, ge=1, le=8000),
     cursor: str | None = None,
-    fixture: int | None = None,
 ) -> dict[str, Any]:
     start_dt, end_dt = _parse_iso(start), _parse_iso(end)
     if start_dt is not None and end_dt is not None and start_dt > end_dt:
         raise HTTPException(status_code=422, detail="start must be before or equal to end")
-    events, source_status, fallback_detail = _load_events_for_request(
-        fixture_flag=fixture == 1,
-    )
+    events, source_status, fallback_detail = _load_events_for_request()
     filtered = _filtered_events(
         events,
         types=types,
@@ -407,26 +411,22 @@ def list_events(
     return body
 
 
-def _load_links_for_request(*, fixture_flag: bool, live: bool) -> list[dict[str, Any]]:
-    """Read every link, caching good live reads; fall back to snapshot or fixtures."""
+def _load_links_for_request(*, live: bool) -> list[dict[str, Any]]:
+    """Read every link, caching good live reads; fall back to the snapshot."""
     links = None
     link_ping = None
-    if not _force_fixtures(fixture_flag) and live:
+    if not _use_fixtures() and live:
         links, link_ping = fetch_mart_links()
         if links is not None:
+            links = _usable_rows(links, "link")
             try:
-                _validate_rows(links, "link")
-            except ValueError:
-                links = None
-            else:
-                try:
-                    SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
-                    _atomic_write(LINKS_SNAPSHOT, json.dumps(links, indent=2) + "\n")
-                except OSError:
-                    pass
+                SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+                _atomic_write(LINKS_SNAPSHOT, json.dumps(links, indent=2) + "\n")
+            except OSError:
+                pass
     if links is None:
         try:
-            links, _ = _load_links_cache(prefer_snapshot=not _force_fixtures(fixture_flag))
+            links, _ = _load_links_cache()
         except HTTPException as exc:
             if link_ping is not None:
                 raise HTTPException(503, detail={
@@ -437,20 +437,18 @@ def _load_links_for_request(*, fixture_flag: bool, live: bool) -> list[dict[str,
 
 
 @app.get("/links")
-def list_links(fixture: int | None = None) -> list[dict[str, Any]]:
+def list_links() -> list[dict[str, Any]]:
     """Every link in one read, so the globe can draw arcs without a request per event."""
-    return _load_links_for_request(fixture_flag=fixture == 1, live=True)
+    return _load_links_for_request(live=True)
 
 
 @app.get("/events/{event_id}/links")
-def get_event_links(event_id: str, fixture: int | None = None) -> list[dict[str, Any]]:
-    events, _status, _detail = _load_events_for_request(
-        fixture_flag=fixture == 1,
-    )
+def get_event_links(event_id: str) -> list[dict[str, Any]]:
+    events, _status, _detail = _load_events_for_request()
     ids = {event["id"] for event in events}
     if event_id not in ids:
         raise HTTPException(status_code=404, detail=f"event not found: {event_id}")
-    links = _load_links_for_request(fixture_flag=fixture == 1, live=_status["database"] == "ok")
+    links = _load_links_for_request(live=_status["database"] == "ok")
     return [
         link
         for link in links
@@ -459,10 +457,8 @@ def get_event_links(event_id: str, fixture: int | None = None) -> list[dict[str,
 
 
 @app.get("/events/{event_id}")
-def get_event(event_id: str, fixture: int | None = None) -> dict[str, Any]:
-    events, _status, _detail = _load_events_for_request(
-        fixture_flag=fixture == 1,
-    )
+def get_event(event_id: str) -> dict[str, Any]:
+    events, _status, _detail = _load_events_for_request()
     for event in events:
         if event["id"] == event_id:
             return event

@@ -65,7 +65,8 @@ changes explicitly.
 ## Architecture and configuration
 
 Keep FastAPI as the browser-facing API; access Postgres (Neon) and Gemini
-server-side only. Preserve fallback data, keep credentials out of commits, and
+server-side only. Never serve sample fixtures while a database is configured: omit rows that
+fail the schema and show the rest. Keep credentials out of commits, and
 retain source attribution: list every data source in the README credits and in
 `apps/web/src/components/data-attribution.tsx`. Report unknown feed health
 honestly. Keep the daily jobs within free tiers (Gemini call budgets, Neon's

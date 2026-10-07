@@ -1,9 +1,11 @@
 # Eye of Horus API
 
-A read-only FastAPI service. It serves events and links from Postgres (`mart.event`,
-`mart.event_link`) when `DATABASE_URL` is set and the database answers. Otherwise it serves
-the last-good `data/snapshots` copy, then the bundled `data/fixtures`. It never writes to the
-database; the daily jobs in [`jobs/`](../../jobs/README.md) do that.
+A read-only FastAPI service. With `DATABASE_URL` set, it serves events and links from Postgres
+(`mart.event`, `mart.event_link`), leaving out any row that doesn't match the shared schema; if
+the database can't be reached it serves the last-good `data/snapshots` copy, or a `503`. It
+never serves the sample `data/fixtures` while a database is configured; those are only for
+running without one. It never writes to the database; the daily jobs in
+[`jobs/`](../../jobs/README.md) do that.
 
 ## Run locally
 
@@ -20,7 +22,7 @@ uvicorn main:app --reload --host 127.0.0.1 --port 43124
 
 ```bash
 curl http://127.0.0.1:43124/health
-curl "http://127.0.0.1:43124/events?fixture=1"
+curl "http://127.0.0.1:43124/events?limit=5"
 curl http://127.0.0.1:43124/links
 ```
 
@@ -39,12 +41,13 @@ directories and simulated database failures, never a real database or credential
 
 `/events` query parameters: `types` (comma-separated `layerId`s), `start` (inclusive) and `end`
 (exclusive) as timezone-aware ISO timestamps, `minSignificance`, `limit` (default 2000, max 8000),
-`cursor` (from `nextCursor`), and `fixture=1` to force sample data. Events and links follow the
+and `cursor` (from `nextCursor`). Events and links follow the
 shared schemas in [`packages/schema/`](../../packages/schema). Only categories that
 `event.schema.json` lists are read from the database.
 
-A database outage falls back to the snapshot, then the fixtures; a `503` happens only when none
-is readable. A usable fallback can report `ok: true` while `database` reports the outage.
+Rows that fail the schema are logged and omitted, even if that leaves none; `/health` reports how
+many in `detail`. A database outage serves the snapshot, or a `503` when there is none. A usable
+snapshot can report `ok: true` while `database` reports the outage.
 `sourceStatus` keys are `news`, `gdelt`, and `database`; feed status is `unknown` unless a job
 recorded it, and `fixture` for sample data.
 
@@ -67,5 +70,5 @@ The API is its own Vercel project built from the **repository root**: [`server.p
 loads this app, [`pyproject.toml`](../../pyproject.toml) lists its dependencies, and
 [`vercel.json`](../../vercel.json) keeps the website and jobs out of the function bundle. Set
 `DATABASE_URL` in the project's environment variables. The disk is read-only there, so no
-snapshot is written; an outage falls back straight to the fixtures. Keep the versions in
+snapshot is written; an outage returns a `503`. Keep the versions in
 `pyproject.toml` in step with `requirements.txt`.

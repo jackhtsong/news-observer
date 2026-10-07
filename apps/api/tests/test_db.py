@@ -26,6 +26,20 @@ class DatabaseTests(unittest.TestCase):
                 db.load_repo_env()
                 self.assertEqual(db.database_url(), "process-wins")
 
+    def test_terms_are_coerced_to_the_shared_shape(self):
+        raw = json.dumps([
+            "Ceasefire", {"text": " Gaza ", "relevance": 85}, {"text": "UN", "type": "organization", "relevance": 0.9},
+            {"text": "", "type": "topic"}, {"type": "topic"}, 7, {"text": "Aid", "type": None, "confidence": -1},
+        ])
+        self.assertEqual(db.clean_terms(raw), [
+            {"text": "Ceasefire", "type": "topic"},
+            {"text": "Gaza", "type": "topic", "relevance": 0.85},
+            {"text": "UN", "type": "organization", "relevance": 0.9},
+            {"text": "Aid", "type": "topic"},
+        ])
+        self.assertEqual(db.clean_terms("not json"), [])
+        self.assertEqual(db.clean_terms(None), [])
+
     def test_event_read_reuses_ping_and_does_not_truncate(self):
         connection = MagicMock()
         cursor = connection.cursor.return_value.__enter__.return_value

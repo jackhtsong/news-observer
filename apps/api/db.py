@@ -195,6 +195,28 @@ def _json_value(value: Any) -> Any:
     return value
 
 
+def clean_terms(value: Any) -> list[dict[str, Any]]:
+    """Keywords or entities in the shared `term` shape. Gemini sometimes returns bare strings,
+    leaves out `type`, or scores 0-100; fix what can be fixed and drop the rest."""
+    value = _json_value(value)
+    terms: list[dict[str, Any]] = []
+    for item in value if isinstance(value, list) else []:
+        if isinstance(item, str):
+            item = {"text": item}
+        if not isinstance(item, dict) or not isinstance(item.get("text"), str) or not item["text"].strip():
+            continue
+        kind = item.get("type")
+        term = {**item, "text": item["text"].strip(), "type": kind if isinstance(kind, str) and kind else "topic"}
+        for key in ("relevance", "confidence"):
+            score = term.pop(key, None)
+            if isinstance(score, (int, float)) and not isinstance(score, bool):
+                score = score / 100 if 1 < score <= 100 else score
+                if 0 <= score <= 1:
+                    term[key] = float(score)
+        terms.append(term)
+    return terms
+
+
 def _clean_attributes(value: Any) -> dict[str, Any]:
     data = _json_value(value) or {}
     if not isinstance(data, dict):
@@ -222,8 +244,6 @@ def _json_safe(value: Any) -> Any:
 
 
 def _row_to_event(row: dict[str, Any]) -> dict[str, Any]:
-    keywords = _json_value(row.get("keywords")) or []
-    entities = _json_value(row.get("entities")) or []
     tags = _json_value(row.get("tags")) or []
     return _json_safe({
         "id": row["id"],
@@ -245,8 +265,8 @@ def _row_to_event(row: dict[str, Any]) -> dict[str, Any]:
         "weight": row.get("weight"),
         "significance": row["significance"],
         "countryIso3": row.get("country_iso3"),
-        "keywords": keywords if isinstance(keywords, list) else [],
-        "entities": entities if isinstance(entities, list) else [],
+        "keywords": clean_terms(row.get("keywords")),
+        "entities": clean_terms(row.get("entities")),
         "rawRef": row.get("raw_ref"),
         "tags": tags if isinstance(tags, list) else [],
         "attributes": _clean_attributes(row.get("attributes")),

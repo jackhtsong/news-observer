@@ -30,7 +30,7 @@ for path in (API_DIR, REPO_ROOT):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-from db import LAYER_IDS, database_configured, database_url, load_repo_env  # noqa: E402
+from db import LAYER_IDS, clean_terms, database_configured, database_url, load_repo_env  # noqa: E402
 from jobs.news import geocode, sources  # noqa: E402
 
 BATCH = 12  # items per Gemini call
@@ -188,7 +188,7 @@ def main() -> None:
                     "summary": result.get("summary") or item["summary"], "url": item["url"], "image_url": item["image_url"],
                     "occurred_at": item["published_at"] or item["fetched_at"], **placed,
                     "significance": float(significance) if isinstance(significance, (int, float)) and 0 <= significance <= 100 else 30.0,
-                    "keywords": json.dumps(result.get("keywords") or []),
+                    "keywords": json.dumps(clean_terms(result.get("keywords"))),
                     "publisher_id": item["publisher_id"], "verification": json.dumps(verdict),
                 })
                 conn.execute("UPDATE raw.feed_item SET status = 'ingested', verdict = %s::jsonb WHERE item_id = %s",

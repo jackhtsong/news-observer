@@ -100,10 +100,10 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["access-control-allow-origin"], main.DEFAULT_VITE_ORIGIN)
 
-    def test_forced_fixture_mode_skips_warehouse(self):
-        with patch.dict(os.environ, {"DATABASE_URL": "configured"}), patch.object(main, "fetch_mart_events") as fetch:
-            self.assertEqual(self.client.get("/events?fixture=1").json()["events"], self.events)
-            fetch.assert_not_called()
+    def test_configured_database_ignores_the_fixture_query(self):
+        live = [self.events[0]]
+        with patch.dict(os.environ, {"DATABASE_URL": "configured"}), patch.object(main, "fetch_mart_events", return_value=(live, DatabasePing("ok", None))):
+            self.assertEqual(self.client.get("/events?fixture=1").json()["events"], live)
 
     def test_live_filter_and_small_limit_preserve_fallback_dataset(self):
         healthy = DatabasePing("ok", "2026-10-03T14:00:00Z")
@@ -121,27 +121,29 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(response.json()["events"], self.events)
             self.assertEqual(response.json()["sourceStatus"]["database"], "dark")
 
-    def test_corrupt_snapshot_falls_back_to_fixtures(self):
+    def test_configured_database_never_falls_back_to_samples(self):
         main.SNAPSHOTS_DIR.mkdir()
         dark = DatabasePing("dark", None, "simulated outage")
         for content in ("[", "[{}]", '["invalid event"]'):
             with self.subTest(content=content):
                 main.EVENTS_SNAPSHOT.write_text(content)
-                with patch.dict(os.environ, {"DATABASE_URL": "configured"}), patch.object(main, "fetch_mart_events", return_value=(None, dark)):
+                with patch.dict(os.environ, {"DATABASE_URL": "configured"}), patch.object(main, "fetch_mart_events", return_value=(None, dark)), patch.object(main, "ping_and_warmup", return_value=dark):
                     response = self.client.get("/events")
-                    self.assertEqual(response.status_code, 200)
-                    self.assertEqual(response.json()["events"], self.events)
+                    self.assertEqual(response.status_code, 503)
+                    self.assertEqual(response.json()["detail"]["failingSource"], "database")
+                    self.assertEqual(self.client.get("/health").json()["dataSource"], "unavailable")
+                    self.assertEqual(self.client.get("/links").status_code, 503)
 
-    def test_bad_live_rows_do_not_replace_last_good_snapshot(self):
-        main.SNAPSHOTS_DIR.mkdir()
-        main.EVENTS_SNAPSHOT.write_text(json.dumps(self.events))
+    def test_unusable_live_rows_are_omitted_not_replaced_with_samples(self):
         healthy = DatabasePing("ok", None)
-        with patch.dict(os.environ, {"DATABASE_URL": "configured"}), patch.object(main, "fetch_mart_events", return_value=([{}], healthy)):
+        with patch.dict(os.environ, {"DATABASE_URL": "configured"}), patch.object(main, "fetch_mart_events", return_value=([{}], healthy)), patch.object(main, "ping_and_warmup", return_value=healthy):
             response = self.client.get("/events")
-            self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.json()["events"], self.events)
-            self.assertEqual(response.json()["sourceStatus"]["database"], "error")
-            self.assertEqual(json.loads(main.EVENTS_SNAPSHOT.read_text()), self.events)
+            health = self.client.get("/health").json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["events"], [])
+        self.assertEqual(response.json()["sourceStatus"]["database"], "ok")
+        self.assertEqual((health["ok"], health["dataSource"]), (True, "warehouse"))
+        self.assertIn("1 event rows omitted", health["detail"])
 
     def test_health_fails_when_fixture_cache_is_unreadable(self):
         for content in ("[", "[{}]"):
@@ -183,13 +185,16 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(body["dataSource"], "fixture")
         self.assertIn("MART.EVENT", body["detail"])
 
-    def test_health_rejects_unusable_mart_with_no_cache(self):
-        main.EVENTS_FIXTURE.unlink()
+    def test_one_bad_live_row_is_skipped_not_the_whole_warehouse(self):
+        bad = {**self.events[0], "id": "test:bad", "keywords": ["not a term"]}
         healthy = DatabasePing("ok", None)
-        with patch.object(main, "ping_and_warmup", return_value=healthy), patch.object(main, "fetch_mart_events", return_value=([{}], healthy)):
-            body = self.client.get("/health").json()
-        self.assertFalse(body["ok"])
-        self.assertEqual(body["dataSource"], "unavailable")
+        with patch.dict(os.environ, {"DATABASE_URL": "configured"}), patch.object(main, "fetch_mart_events", return_value=(self.events + [bad], healthy)), patch.object(main, "ping_and_warmup", return_value=healthy):
+            body = self.client.get("/events").json()
+            health = self.client.get("/health").json()
+        self.assertEqual([event["id"] for event in body["events"]], [event["id"] for event in self.events])
+        self.assertEqual(body["sourceStatus"]["database"], "ok")
+        self.assertEqual((health["database"], health["dataSource"]), ("ok", "warehouse"))
+        self.assertIn("1 event rows omitted", health["detail"])
 
     def test_successful_empty_warehouse_remains_empty(self):
         main.SNAPSHOTS_DIR.mkdir()
@@ -226,12 +231,12 @@ class ApiTests(unittest.TestCase):
         with patch.dict(os.environ, {"DATABASE_URL": "configured"}), patch.object(main, "fetch_mart_links", return_value=(None, dark)):
             self.assertEqual(self.client.get("/links").json(), [link])
 
-    def test_invalid_live_links_use_existing_cache(self):
+    def test_invalid_live_links_are_omitted(self):
         healthy = DatabasePing("ok", None)
         path = f"/events/{self.events[0]['id']}/links"
-        with patch.dict(os.environ, {"DATABASE_URL": "configured"}), patch.object(main, "fetch_mart_events", return_value=(self.events, healthy)), patch.object(main, "fetch_mart_links", return_value=([{}], healthy)):
+        with patch.dict(os.environ, {"DATABASE_URL": "configured"}), patch.object(main, "fetch_mart_events", return_value=(self.events, healthy)), patch.object(main, "fetch_mart_links", return_value=([{}, self.links[0]], healthy)):
             self.assertEqual(self.client.get(path).json(), self.links)
-        self.assertFalse(main.LINKS_SNAPSHOT.exists())
+            self.assertEqual(self.client.get("/links").json(), self.links)
 
     def test_source_metadata_survives_snapshot_refresh(self):
         main.SNAPSHOTS_DIR.mkdir()
