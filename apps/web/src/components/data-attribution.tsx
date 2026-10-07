@@ -7,7 +7,7 @@ const GROUPS: { label: string; sources: { name: string; href: string; title: str
     { name: "BBC News", href: "https://www.bbc.co.uk/news/world", title: "BBC News World RSS feed" },
     { name: "The Guardian", href: "https://www.theguardian.com/world", title: "The Guardian World news RSS feed" },
     { name: "Al Jazeera", href: "https://www.aljazeera.com/", title: "Al Jazeera RSS feed" },
-    { name: "GDELT", href: "https://www.gdeltproject.org/", title: "The GDELT Project daily event data" },
+    { name: "GDELT", href: "https://www.gdeltproject.org/", title: "The GDELT Project daily event data, drawn from news outlets worldwide; each GDELT card names the outlet that published its article" },
   ] },
   { label: "Map", sources: [
     { name: "Natural Earth", href: "https://www.naturalearthdata.com/", title: "Natural Earth country shapes (public domain)" },

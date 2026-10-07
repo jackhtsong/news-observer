@@ -12,3 +12,12 @@ test('sources read as outlet names on cards', () => {
  assert.equal(sourceLabel('conflict_csv'), 'GDELT');
  assert.equal(sourceLabel('acled'), 'ACLED', 'unknown sources keep their id');
 });
+
+test('GDELT stories name the outlet that published the article', () => {
+ const url = 'https://news.wjct.org/national-news/2026-10-05/republicans-and-democrats-find-a-unifying-target';
+ assert.equal(sourceLabel('conflict_csv', url), 'NEWS.WJCT.ORG VIA GDELT');
+ assert.equal(sourceLabel('conflict_csv', 'https://www.example.com/a'), 'EXAMPLE.COM VIA GDELT', 'www. is dropped');
+ assert.equal(sourceLabel('conflict_csv', null), 'GDELT', 'no link: just the feed');
+ assert.equal(sourceLabel('conflict_csv', 'javascript:alert(1)'), 'GDELT', 'only http(s) links name an outlet');
+ assert.equal(sourceLabel('bbc', 'https://www.bbc.co.uk/news/world-1'), 'BBC', 'direct feeds keep their own name');
+});

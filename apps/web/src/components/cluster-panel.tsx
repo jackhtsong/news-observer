@@ -41,7 +41,7 @@ export default function ClusterPanel({ events, linkCount, x, y, stageWidth, stag
             <span className="summary-card-text">
               <span className="summary-card-title">{event.title}</span>
               <span className="summary-card-meta">
-                {LABELS[event.layerId as LayerId] ?? event.layerId} · {sourceLabel(event.source)} · <TimeAgo iso={event.occurredAt} className="" />
+                {LABELS[event.layerId as LayerId] ?? event.layerId} · {sourceLabel(event.source, event.sourceUrl)} · <TimeAgo iso={event.occurredAt} className="" />
                 {links > 0 && <strong> · {links} related</strong>}
               </span>
             </span>

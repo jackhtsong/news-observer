@@ -57,8 +57,8 @@ export const GLOBE = {
   skyBrightness: 0.9, // peak star opacity; dimmer stars fade toward the #FAF9F6 page
   skyStarColor: "#555555", // dark grey dots on the light page instead of B−V star colors
   skyMagnitudeCutoff: 5.5, // dimmest visual magnitude drawn (≈2,900 stars; the catalog reaches ≈6.5)
-  skyStarMinSizePx: 1.6, // CSS pixels for the dimmest stars…
-  skyStarMaxSizePx: 4.2, // …and the brightest (Sirius)
+  skyStarMinSizePx: 4.8, // CSS pixels for the dimmest stars…
+  skyStarMaxSizePx: 12.6, // …and the brightest (Sirius)
   skyColorSaturation: 0.6, // 0 = white; 1 = full B−V star color
   skyRealignMs: 60000, // re-apply sidereal time this often (the sky turns 0.25° per minute)
   pinHeadRadiusDegrees: 0.315, // pin-shaped markers: sphere head, half the earlier 0.63° marker radius

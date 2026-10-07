@@ -33,7 +33,7 @@ function EventButton({ event, onVisit }: { event?: Event; onVisit: (event: Event
   if (!event) return <p className="link-event is-missing">Event not in the loaded dataset</p>;
   return <button className="link-event" style={{ "--pin-color": eventColor(event.layerId) } as CSSProperties} onClick={() => onVisit(event)}>
     <span className="link-event-title">{event.title}</span>
-    <span className="link-event-meta">{LABELS[event.layerId as LayerId] ?? event.layerId} · {sourceLabel(event.source)} · {shortTime(event.occurredAt)}</span>
+    <span className="link-event-meta">{LABELS[event.layerId as LayerId] ?? event.layerId} · {sourceLabel(event.source, event.sourceUrl)} · {shortTime(event.occurredAt)}</span>
   </button>;
 }
 

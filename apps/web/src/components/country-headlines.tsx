@@ -42,7 +42,7 @@ export default function CountryHeadlines({ countries, onRemove, onClear, onPick,
             <span className="summary-card-text">
               <span className="summary-card-title">{event.title}</span>
               <span className="summary-card-meta">
-                {LABELS[event.layerId as LayerId] ?? event.layerId}{countries.length > 1 ? ` · ${country}` : ""} · {sourceLabel(event.source)} · <TimeAgo iso={event.occurredAt} className="" /> · {Math.round(event.significance)}
+                {LABELS[event.layerId as LayerId] ?? event.layerId}{countries.length > 1 ? ` · ${country}` : ""} · {sourceLabel(event.source, event.sourceUrl)} · <TimeAgo iso={event.occurredAt} className="" /> · {Math.round(event.significance)}
                 {links > 0 && <strong> · {links} related</strong>}
               </span>
             </span>

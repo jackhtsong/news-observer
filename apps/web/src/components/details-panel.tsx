@@ -87,7 +87,7 @@ export default function DetailsPanel({ event, fixture, position, rank, onPrev, o
       <div className="briefing-hero-text">
         <p className="briefing-chips">
           <span className="briefing-chip" style={{ background: color }}>{LABELS[event.layerId as LayerId] ?? event.layerId}</span>
-          <span>{sourceLabel(event.source)}</span>
+          <span>{sourceLabel(event.source, event.sourceUrl)}</span>
           <TimeAgo iso={event.occurredAt} className="" />
           {fixture && <span className="sample-badge">Sample</span>}
         </p>
@@ -134,7 +134,7 @@ export default function DetailsPanel({ event, fixture, position, rank, onPrev, o
       <p>{exactTime(event.occurredAt)}</p>
       {link
         ? <a className="briefing-cta" href={link.href} target="_blank" rel="noreferrer">Read the full story at {link.host} <span aria-hidden="true">↗</span></a>
-        : <p className="briefing-source">Source: {sourceLabel(event.source)}</p>}
+        : <p className="briefing-source">Source: {sourceLabel(event.source, event.sourceUrl)}</p>}
     </footer>
   </aside>;
 }
