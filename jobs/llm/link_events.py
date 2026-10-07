@@ -71,17 +71,46 @@ def _keyword_overlap(keywords_a: list[dict], keywords_b: list[dict]) -> float:
     return intersection / union if union > 0 else 0.0
 
 
+_SCORE_WORDS = {"very high": 0.95, "high": 0.8, "medium": 0.6, "moderate": 0.6, "low": 0.3, "very low": 0.1}
+
+
+def _score(value) -> float:
+    """A model-reported score as a number in 0–1. Gemini usually sends 0.85, but sometimes
+    "0.85", "85%", 85, or "high"; anything unreadable counts as 0."""
+    if isinstance(value, bool):
+        return 0.0
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in _SCORE_WORDS:
+            return _SCORE_WORDS[text]
+        percent = text.endswith("%")
+        try:
+            value = float(text.rstrip("%").strip()) / (100 if percent else 1)
+        except ValueError:
+            return 0.0
+    if not isinstance(value, (int, float)) or value != value:  # not a number, or NaN
+        return 0.0
+    if 2 < value <= 100:
+        value /= 100  # a percentage written as a number (a slightly-over 1.4 is just clamped)
+    return max(0.0, min(1.0, float(value)))
+
+
+def _strings(value) -> list[str]:
+    """A model-reported list as strings (a lone string becomes a one-item list)."""
+    if isinstance(value, str):
+        return [value] if value.strip() else []
+    return [str(item) for item in value] if isinstance(value, list) else []
+
+
 def _has_causal_chain(hypothesis: dict) -> bool:
     """Check if hypothesis contains a causal chain."""
-    chain = hypothesis.get('causal_chain', [])
-    return isinstance(chain, list) and len(chain) >= 2
+    return len(_strings(hypothesis.get('causal_chain'))) >= 2
 
 
 def _has_evidence(verification: dict) -> bool:
     """Check if verification has supporting evidence."""
-    explicit = verification.get('explicit_evidence', [])
-    world_knowledge = verification.get('world_knowledge', [])
-    return len(explicit) >= 1 or len(world_knowledge) >= 1
+    # The verifier's reply names it explicit_evidence; the link data built from it, evidence.
+    return any(_strings(verification.get(key)) for key in ('explicit_evidence', 'evidence', 'world_knowledge'))
 
 
 def _insert_link(cursor, link: dict):
@@ -321,7 +350,7 @@ def _verify_news_news_batch(client, news_a: dict, candidates: list[dict]) -> tup
     print(f"    Generated {len(hypotheses)} hypotheses")
 
     # Filter to high-plausibility hypotheses
-    high_plausibility = [h for h in hypotheses if h.get('plausibility', 0) >= MIN_PLAUSIBILITY]
+    high_plausibility = [h for h in hypotheses if isinstance(h, dict) and _score(h.get('plausibility')) >= MIN_PLAUSIBILITY]
 
     if not high_plausibility:
         print(f"    No hypotheses above plausibility threshold ({MIN_PLAUSIBILITY})")
@@ -354,15 +383,15 @@ def _verify_news_news_batch(client, news_a: dict, candidates: list[dict]) -> tup
         link_data = {
             'article_id': article_id,
             'relationship': True,
-            'type': hypothesis['type'],
-            'confidence': verification['confidence_overall'],
-            'confidence_plausibility': verification['confidence_plausibility'],
-            'confidence_evidence': verification['confidence_evidence'],
-            'mechanism': verification['reasoning_chain'],
-            'causal_chain': hypothesis.get('causal_chain', []),
-            'evidence': verification.get('explicit_evidence', []),
-            'world_knowledge': verification.get('world_knowledge', []),
-            'verdict': verification.get('verdict', 'UNKNOWN'),
+            'type': str(hypothesis.get('type') or 'related'),
+            'confidence': _score(verification.get('confidence_overall')),
+            'confidence_plausibility': _score(verification.get('confidence_plausibility')),
+            'confidence_evidence': _score(verification.get('confidence_evidence')),
+            'mechanism': str(verification.get('reasoning_chain') or ''),
+            'causal_chain': _strings(hypothesis.get('causal_chain')),
+            'evidence': _strings(verification.get('explicit_evidence')),
+            'world_knowledge': _strings(verification.get('world_knowledge')),
+            'verdict': str(verification.get('verdict') or 'UNKNOWN'),
         }
 
         verified_links.append(link_data)
@@ -453,66 +482,18 @@ def link_news_to_news(conn, client, max_calls: int = MAX_CALLS) -> dict:
         news_a = next(n for n in news_events if n['id'] == news_id)
 
         print(f"\n  Analyzing: {news_a['id'][:40]}...")
+        try:
+            calls_used, created, rejected = _link_one(cursor, client, news_a, candidates)
+        except Exception as error:  # noqa: BLE001 — an unexpected model reply skips this story, not the run
+            conn.rollback()
+            print(f"    Skipped: {type(error).__name__}: {str(error)[:160]}")
+            calls_used, created, rejected = 1, 0, 0
+        api_calls += calls_used
+        links_created += created
+        links_rejected += rejected
 
-        # Process in batches
-        for batch_start in range(0, len(candidates), BATCH_SIZE_NEWS):
-            batch = candidates[batch_start:batch_start + BATCH_SIZE_NEWS]
-
-            # Two-stage verification (hypothesis generation + verification calls)
-            verified, verify_calls = _verify_news_news_batch(client, news_a, batch)
-            api_calls += 1 + verify_calls  # Hypothesis generation + verifications
-
-            # Rate limiting for hypothesis call
-            time.sleep(RATE_LIMIT_DELAY)
-
-            # Process verified links
-            for link_data in verified:
-                if not link_data.get('relationship'):
-                    links_rejected += 1
-                    continue
-
-                confidence = float(link_data.get('confidence', 0.0))
-                mechanism = link_data.get('mechanism', '')
-
-                # Quality filtering (relaxed for exploratory linking)
-                if (confidence < MIN_CONFIDENCE or
-                    not _has_causal_chain(link_data) or
-                    not _has_evidence(link_data)):
-                    links_rejected += 1
-                    continue
-
-                # Build detailed rationale with causal chain
-                causal_chain_text = " → ".join(link_data.get('causal_chain', []))
-                full_rationale = f"{mechanism}\n\nCausal chain: {causal_chain_text}\n\nEvidence: " + \
-                                "; ".join(link_data.get('evidence', [])[:3])
-
-                # Create link with two-dimensional confidence
-                link = {
-                    'link_id': f"link:{news_a['id']}:{link_data['article_id']}",
-                    'source_id': news_a['id'],
-                    'target_id': link_data['article_id'],
-                    'relation': link_data['type'].lower().replace('_', '-'),
-                    'confidence': confidence,
-                    'rationale': full_rationale,
-                    'citations': json.dumps({
-                        'plausibility': link_data.get('confidence_plausibility', 0),
-                        'evidence': link_data.get('confidence_evidence', 0),
-                        'verdict': link_data.get('verdict', ''),
-                        'world_knowledge': link_data.get('world_knowledge', []),
-                    }),
-                    'model': MODEL,
-                }
-
-                _insert_link(cursor, link)
-                links_created += 1
-
-                # Show results with two-dimensional confidence
-                plaus = link_data.get('confidence_plausibility', 0)
-                evid = link_data.get('confidence_evidence', 0)
-                print(f"    ✓ {link_data['article_id'][:30]:30} "
-                      f"({link['relation']:20} conf={confidence:.2f} p={plaus:.2f} e={evid:.2f})")
-
-        # Commit per source article so a crash only loses the article in progress
+        # Commit per source article so a crash only loses the article in progress;
+        # a skipped story is marked too, so a reply that always fails is not retried daily.
         mark_linked([news_id])
         conn.commit()
 
@@ -528,6 +509,70 @@ def link_news_to_news(conn, client, max_calls: int = MAX_CALLS) -> dict:
         'stopped_early': stopped_early,
         'avg_confidence': 0.0,  # TODO: calculate from created links
     }
+
+
+def _link_one(cursor, client, news_a: dict, candidates: list[dict]) -> tuple[int, int, int]:
+    """Verify one story's candidates and insert its links. Returns (API calls, created, rejected)."""
+    api_calls = links_created = links_rejected = 0
+    # Process in batches
+    for batch_start in range(0, len(candidates), BATCH_SIZE_NEWS):
+        batch = candidates[batch_start:batch_start + BATCH_SIZE_NEWS]
+
+        # Two-stage verification (hypothesis generation + verification calls)
+        verified, verify_calls = _verify_news_news_batch(client, news_a, batch)
+        api_calls += 1 + verify_calls  # Hypothesis generation + verifications
+
+        # Rate limiting for hypothesis call
+        time.sleep(RATE_LIMIT_DELAY)
+
+        # Process verified links
+        for link_data in verified:
+            if not link_data.get('relationship'):
+                links_rejected += 1
+                continue
+
+            confidence = _score(link_data.get('confidence'))
+            mechanism = link_data.get('mechanism', '')
+
+            # Quality filtering (relaxed for exploratory linking)
+            if (confidence < MIN_CONFIDENCE or
+                not _has_causal_chain(link_data) or
+                not _has_evidence(link_data)):
+                links_rejected += 1
+                continue
+
+            # Build detailed rationale with causal chain
+            causal_chain_text = " → ".join(link_data.get('causal_chain', []))
+            full_rationale = f"{mechanism}\n\nCausal chain: {causal_chain_text}\n\nEvidence: " + \
+                            "; ".join(link_data.get('evidence', [])[:3])
+
+            # Create link with two-dimensional confidence
+            link = {
+                'link_id': f"link:{news_a['id']}:{link_data['article_id']}",
+                'source_id': news_a['id'],
+                'target_id': link_data['article_id'],
+                'relation': link_data['type'].lower().replace('_', '-'),
+                'confidence': confidence,
+                'rationale': full_rationale,
+                'citations': json.dumps({
+                    'plausibility': link_data.get('confidence_plausibility', 0),
+                    'evidence': link_data.get('confidence_evidence', 0),
+                    'verdict': link_data.get('verdict', ''),
+                    'world_knowledge': link_data.get('world_knowledge', []),
+                }),
+                'model': MODEL,
+            }
+
+            _insert_link(cursor, link)
+            links_created += 1
+
+            # Show results with two-dimensional confidence
+            plaus = link_data.get('confidence_plausibility', 0)
+            evid = link_data.get('confidence_evidence', 0)
+            print(f"    ✓ {link_data['article_id'][:30]:30} "
+                  f"({link['relation']:20} conf={confidence:.2f} p={plaus:.2f} e={evid:.2f})")
+
+    return api_calls, links_created, links_rejected
 
 
 # =============================================================================

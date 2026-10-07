@@ -180,7 +180,9 @@ credits in the bottom-right corner of the globe, in
 - **News:** [BBC News](https://www.bbc.co.uk/news/world), [The Guardian](https://www.theguardian.com/world),
   and [Al Jazeera](https://www.aljazeera.com/), through their public RSS feeds. Each story card
   links to the original article.
-- **Conflict events:** [The GDELT Project](https://www.gdeltproject.org/).
+- **Conflict events:** [The GDELT Project](https://www.gdeltproject.org/), which monitors news outlets
+  worldwide. Each GDELT story links to one article about the event, and its card names that
+  article's outlet (for example "NEWS.WJCT.ORG VIA GDELT").
 - **Geocoding:** © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, via
   Nominatim (ODbL).
 - **Star backdrop:** Yale Bright Star Catalogue, 5th Revised Ed. (Hoffleit, D. & Warren Jr., W. H. 1991),
