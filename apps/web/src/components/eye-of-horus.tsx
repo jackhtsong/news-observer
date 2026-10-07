@@ -1,3 +1,5 @@
+import { PRODUCT_NAME } from "@/components/brand";
+
 /** The wedjat: brow, almond eye, pupil, and the falcon-cheek teardrop and spiral. Drawn in currentColor. */
 export function EyeOfHorusIcon({ className }: { className?: string }) {
   return <svg className={className} viewBox="0 0 64 40" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -14,6 +16,6 @@ export function EyeOfHorusIcon({ className }: { className?: string }) {
 export default function EyeOfHorusBrand({ className }: { className?: string }) {
   return <span className={`brand${className ? ` ${className}` : ""}`}>
     <EyeOfHorusIcon className="brand-icon" />
-    <span className="brand-name">Eye of Horus</span>
+    <span className="brand-name">{PRODUCT_NAME}</span>
   </span>;
 }

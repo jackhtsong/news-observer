@@ -7,7 +7,7 @@ const inter = localFont({
   weight: "100 900",
   display: "swap",
 });
-export const metadata: Metadata = { title: "Eye of Horus", description: "The world's news, on one globe: technology, government, finance, conflict, and society." };
+export const metadata: Metadata = { title: "Globe", description: "The world's news, on one globe: technology, government, finance, conflict, and society." };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   // Browser extensions add attributes to <html> before hydration; ignore only those.
   return <html lang="en" className={inter.variable} suppressHydrationWarning><body>{children}</body></html>;

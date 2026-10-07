@@ -1,5 +1,5 @@
 /** Working name; change it here (and in app/layout.tsx metadata) if it changes. */
-export const PRODUCT_NAME = "Eye of Horus";
+export const PRODUCT_NAME = "Globe";
 
 /**
  * A simplified wedjat (Eye of Horus): brow, almond eye with iris, and the drop and curl

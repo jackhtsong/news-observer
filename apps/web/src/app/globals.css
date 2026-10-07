@@ -852,7 +852,7 @@ input:focus-visible {
   background: var(--surface); color-scheme: light;
   box-shadow: 0 4px 16px #0002;
 }
-/* Eye of Horus mark, top right over the globe; an open briefing (z-index 7) covers it. */
+/* Logo mark (an Eye of Horus), top right over the globe; an open briefing (z-index 7) covers it. */
 .globe-brand {
   position: absolute;
   top: 22px;
@@ -1253,7 +1253,7 @@ input:focus-visible {
 .link-scores dd { margin: 0; text-transform: capitalize; }
 .link-model { margin: 10px 0 0; font-size: 11px; color: var(--ink-3); }
 
-/* BRAND — "Eye of Horus": a line-art wedjat beside the name. */
+/* BRAND — "Globe": a line-art wedjat (Eye of Horus) beside the name. */
 .brand { display: inline-flex; align-items: center; gap: 10px; }
 .brand-icon { width: 32px; height: 20px; color: #ffffff; flex: none; }
 .brand-name { color: #efefef; font-size: 17px; font-weight: 700; letter-spacing: .2px; }
