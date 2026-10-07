@@ -173,8 +173,17 @@ def _connect():
     import psycopg
 
     url = database_url()
-    return psycopg.connect(url, connect_timeout=5, sslmode="require",
-                           options="-c statement_timeout=10000", **_ipv4_hostaddr(url))
+    # Neon's pooled (PgBouncer) URLs reject startup options such as `-c statement_timeout`,
+    # so the query limit is set after connecting; it holds for the connection's transaction,
+    # which is all one API read uses. Poolers also cannot keep prepared statements, so
+    # psycopg's automatic preparation is off.
+    conn = psycopg.connect(url, connect_timeout=5, sslmode="require", prepare_threshold=None, **_ipv4_hostaddr(url))
+    try:
+        conn.execute("SET statement_timeout = 10000")
+    except Exception:
+        conn.close()
+        raise
+    return conn
 
 
 def _json_value(value: Any) -> Any:

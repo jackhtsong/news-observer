@@ -80,7 +80,10 @@ class DatabaseTests(unittest.TestCase):
             db._connect()
         self.assertEqual(connect.call_args.kwargs["sslmode"], "require")
         self.assertEqual(connect.call_args.kwargs["connect_timeout"], 5)
-        self.assertIn("statement_timeout=10000", connect.call_args.kwargs["options"])
+        # No startup options: Neon's pooled URLs reject them. The limit is set after connecting.
+        self.assertNotIn("options", connect.call_args.kwargs)
+        self.assertIsNone(connect.call_args.kwargs["prepare_threshold"])
+        connect.return_value.execute.assert_called_once_with("SET statement_timeout = 10000")
 
     def test_connection_pins_an_ipv4_address_for_host_names(self):
         # Vercel functions have no outbound IPv6; Neon host names resolve to both families.
